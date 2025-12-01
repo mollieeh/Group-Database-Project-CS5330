@@ -65,7 +65,6 @@ CREATE TABLE DEGREE_OBJECTIVE (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 
--- UPDATED SECTION TO USE year + term AS FK
 CREATE TABLE SECTION (
     section_id       INT AUTO_INCREMENT PRIMARY KEY,
     course_id        INT NOT NULL,
@@ -79,7 +78,7 @@ CREATE TABLE SECTION (
         FOREIGN KEY (course_id) REFERENCES COURSE(course_id)
         ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_section_semester
-        FOREIGN KEY (year, term) REFERENCES SEMESTER(year, term)
+        FOREIGN KEY (year, term) REFERENCES SEMESTER(year, term) -- using year and term as foreign key
         ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT fk_section_instructor
         FOREIGN KEY (instructor_id) REFERENCES INSTRUCTOR(instructor_id)
