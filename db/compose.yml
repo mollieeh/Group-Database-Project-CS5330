@@ -1,0 +1,25 @@
+services:
+  degree-db:
+    image: mysql:8.0
+    container_name: degree_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: wofgnnwifjowqnlwoqgfn5415156
+      MYSQL_DATABASE: degree_db
+      MYSQL_USER: degree_user
+      MYSQL_PASSWORD: degree_password
+      MYSQL_TCP_PORT: 57239
+    ports:
+      - "57239:57239"
+    volumes:
+      - degree_mysql_data:/var/lib/mysql
+      - ./init:/docker-entrypoint-initdb.d
+    networks:
+      - degree_db_network
+
+volumes:
+  degree_mysql_data:
+
+networks:
+  degree_db_network:
+    name: degree_db_network
