@@ -49,3 +49,19 @@ def create_instructor(id: str, name: str):
     cnx.commit()
     cur.close()
     return {"instructor_id": id, "name": name}
+
+# OBJECTIVE
+def create_objective(code: str, title: str, description: str):
+    cur = cnx.cursor()
+    cur.execute("INSERT INTO OBJECTIVE (code, title, description) VALUES (%s, %s, %s)", (code, title, description))
+    cnx.commit()
+    new_id = cur.lastrowid
+    cur.close()
+    return {"objective_id": new_id, "code": code, "title": title, "description": description}
+
+def get_objectives():
+    cur = cnx.cursor(dictionary=True)
+    cur.execute("SELECT objective_id, code, title, description FROM OBJECTIVE;")
+    rows = cur.fetchall()
+    cur.close()
+    return rows

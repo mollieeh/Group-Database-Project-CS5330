@@ -5,16 +5,23 @@ const degreeCountEl = document.getElementById("degree-count");
 const logEl = document.getElementById("log");
 const evaluationPreviewEl = document.getElementById("evaluation-preview");
 const queryResultsEl = document.getElementById("query-results");
+const objectiveListEl = document.getElementById("objective-list");
 
 const state = {
   apiBase: apiInput.value.trim(),
   degrees: [],
+  objectives: [],
   recentEvaluations: [],
   sample: {
     degrees: [
       { degree_id: 1, name: "Computer Science", level: "BS" },
       { degree_id: 2, name: "Data Science", level: "MS" },
       { degree_id: 3, name: "Cybersecurity", level: "Cert" }
+    ],
+    objectives: [
+      { objective_id: 1, code: "LO1", title: "Programming Fundamentals" },
+      { objective_id: 2, code: "LO2", title: "Data Management" },
+      { objective_id: 3, code: "LO3", title: "Security Principles" }
     ],
     evaluations: [
       { degree_id: 1, section_id: 501, objective_id: 301, eval_method: "Project", count_A: 12, count_B: 8, count_C: 3, count_F: 0, improvement_text: "More checkpoints on milestone two." },
@@ -27,6 +34,7 @@ document.addEventListener("DOMContentLoaded", init);
 document.getElementById("test-api").addEventListener("click", testApiConnection);
 document.getElementById("refresh-degrees").addEventListener("click", fetchDegrees);
 document.getElementById("reload-degrees").addEventListener("click", fetchDegrees);
+document.getElementById("reload-objectives").addEventListener("click", fetchObjectives);
 document.getElementById("duplicate-eval").addEventListener("click", duplicateEvaluation);
 
 function init() {
@@ -44,6 +52,7 @@ function init() {
 
   bindForms();
   fetchDegrees();
+  fetchObjectives();
   renderEvaluationPreview();
 }
 
@@ -72,6 +81,9 @@ function bindForms() {
         form.reset();
         if (endpoint === "/degrees") {
           fetchDegrees();
+        }
+        if (endpoint === "/objectives") {
+          fetchObjectives();
         }
         if (endpoint === "/evaluations") {
           state.recentEvaluations.unshift(payload);
@@ -129,6 +141,58 @@ function normalizeDegree(degree) {
     return { degree_id, name, level };
   }
   return degree;
+}
+
+async function fetchObjectives() {
+  const response = await apiRequest("/objectives");
+  let objectives = [];
+
+  if (response.ok && Array.isArray(response.data)) {
+    objectives = response.data;
+  } else if (response.ok && Array.isArray(response.data?.objectives)) {
+    objectives = response.data.objectives;
+  } else {
+    objectives = state.sample.objectives;
+    log("Using sample objectives. Start the API to see live data.");
+  }
+
+  state.objectives = objectives;
+  renderObjectives(objectives);
+}
+
+function renderObjectives(objectives) {
+  if (!objectiveListEl) return;
+  if (!objectives.length) {
+    objectiveListEl.innerHTML = `<div class="empty">No objectives returned yet.</div>`;
+    return;
+  }
+
+  const fragment = document.createDocumentFragment();
+  objectives.forEach((obj, idx) => {
+    const card = document.createElement("div");
+    card.className = "card";
+    const title = document.createElement("div");
+    title.className = "card__title";
+    title.textContent = obj.title || `Objective ${idx + 1}`;
+    card.appendChild(title);
+
+    const meta = document.createElement("div");
+    meta.className = "card__meta";
+    meta.textContent = `Code: ${obj.code || "—"} • ID: ${obj.objective_id ?? "?"}`;
+    card.appendChild(meta);
+
+    if (obj.description) {
+      const desc = document.createElement("div");
+      desc.className = "card__meta";
+      desc.textContent = obj.description;
+      card.appendChild(desc);
+    }
+
+    fragment.appendChild(card);
+  });
+
+  objectiveListEl.innerHTML = "";
+  objectiveListEl.appendChild(fragment);
 }
 
 function serializeForm(form) {

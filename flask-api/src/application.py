@@ -68,3 +68,17 @@ def instructors():
         
         created = repository.create_instructor(instructor_id, instructor_name)
         return jsonify(created), 201
+    
+# OBJECTIVE ENDPOINTS
+@app.route("/objectives", methods=['GET', 'POST'])
+def objectives():
+    if request.method == 'GET':
+        rows = repository.get_objectives()
+        return jsonify(rows)
+
+    data = request.get_json(silent=True) or {}
+    code = data.get('code')
+    title = data.get('title')
+    description = data.get('description')
+    created = repository.create_objective(code, title, description)
+    return jsonify(created), 201
