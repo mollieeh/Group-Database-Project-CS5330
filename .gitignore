@@ -2,3 +2,4 @@ flask-api/.venv
 flask-api/__pycache__
 flask-api/src/__pycache__
 frontend/node_modules
+flask-api/.DS_Store
