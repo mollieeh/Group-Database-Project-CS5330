@@ -9,6 +9,12 @@ python3 -m venv .venv #creates a new python environment for flask
 ```bash
 . .venv/bin/activate # activate the environment
 ```
+
+```bash
+# For windows!
+Set-ExecutionPolicy Bypass -Scope Process # prepare computer
+. .venv\Scripts\Activate.ps1 # activate the environment
+```
 ```bash
 pip install -r requirements.txt # install dependencies
 ```
