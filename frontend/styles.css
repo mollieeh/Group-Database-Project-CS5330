@@ -145,6 +145,15 @@ h3 {
   box-shadow: var(--shadow);
 }
 
+.panel.nested {
+  margin-top: 12px;
+}
+
+.card:hover {
+  border-color: rgba(122, 165, 255, 0.35);
+  cursor: pointer;
+}
+
 .panel__head {
   display: flex;
   justify-content: space-between;

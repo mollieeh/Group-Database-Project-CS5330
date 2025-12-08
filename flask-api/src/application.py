@@ -82,3 +82,28 @@ def objectives():
     description = data.get('description')
     created = repository.create_objective(code, title, description)
     return jsonify(created), 201
+
+# DEGREE COURSE QUERY ENDPOINT
+@app.route("/degrees/<int:degree_id>/courses", methods=['GET'])
+def degree_courses(degree_id: int):
+    courses = repository.get_courses_associated_with_degrees(degree_id)
+    return jsonify(courses)
+
+
+# COURSE/OBJECTIVE ASSOCIATION ENDPOINT
+@app.route("/course-objectives", methods=['POST'])
+def course_objectives():
+    data = request.get_json(silent=True) or {}
+    try:
+        degree_id = int(data.get('degree_id'))
+        course_id = int(data.get('course_id'))
+        objective_id = int(data.get('objective_id'))
+    except (TypeError, ValueError):
+        return jsonify({"error": "degree_id, course_id, and objective_id are required integers"}), 400
+
+    is_core = 1 if str(data.get('is_core')) in ("1", "true", "True") else 0
+
+    dc_link = repository.link_course_to_degree(degree_id, course_id, is_core)
+    co_link = repository.link_course_objective(degree_id, course_id, objective_id)
+
+    return jsonify({"degree_course": dc_link, "course_objective": co_link}), 201

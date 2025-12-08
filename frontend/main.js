@@ -6,11 +6,13 @@ const logEl = document.getElementById("log");
 const evaluationPreviewEl = document.getElementById("evaluation-preview");
 const queryResultsEl = document.getElementById("query-results");
 const objectiveListEl = document.getElementById("objective-list");
+const degreeCourseListEl = document.getElementById("degree-course-list");
 
 const state = {
   apiBase: apiInput.value.trim(),
   degrees: [],
   objectives: [],
+  degreeCourses: [],
   recentEvaluations: [],
   sample: {
     degrees: [
@@ -70,6 +72,10 @@ function bindForms() {
         return;
       }
 
+      if (form.id === "association-form") {
+        payload.is_core = form.querySelector('input[name="is_core"]').checked ? 1 : 0;
+      }
+
       const result = await apiRequest(endpoint, {
         method,
         headers: { "Content-Type": "application/json" },
@@ -88,6 +94,9 @@ function bindForms() {
         if (endpoint === "/evaluations") {
           state.recentEvaluations.unshift(payload);
           renderEvaluationPreview();
+        }
+        if (endpoint === "/course-objectives" && payload.degree_id) {
+          fetchDegreeCourses(payload.degree_id);
         }
       } else {
         log(`Failed to reach ${endpoint}: ${result.error || result.status}`);
@@ -195,6 +204,51 @@ function renderObjectives(objectives) {
   objectiveListEl.appendChild(fragment);
 }
 
+async function fetchDegreeCourses(degreeId, degreeName = "") {
+  const response = await apiRequest(`/degrees/${degreeId}/courses`);
+  let rows = [];
+  if (response.ok && Array.isArray(response.data)) {
+    rows = response.data;
+  } else {
+    log(`Could not load courses for degree ${degreeId}; showing empty state.`);
+  }
+  state.degreeCourses = rows;
+  renderDegreeCourses(rows, degreeId, degreeName);
+}
+
+function renderDegreeCourses(rows, degreeId, degreeName) {
+  if (!degreeCourseListEl) return;
+  if (!rows.length) {
+    degreeCourseListEl.innerHTML = `<div class="empty">No courses found for degree ${degreeName || degreeId || ""}.</div>`;
+    return;
+  }
+
+  const fragment = document.createDocumentFragment();
+  rows.forEach((row) => {
+    const card = document.createElement("div");
+    card.className = "card";
+    const title = document.createElement("div");
+    title.className = "card__title";
+    title.textContent = row.name || row.course_number || "Course";
+    card.appendChild(title);
+
+    const meta = document.createElement("div");
+    meta.className = "card__meta";
+    meta.textContent = `Number: ${row.course_number || "—"} • ID: ${row.course_id ?? "?"}`;
+    card.appendChild(meta);
+
+    const core = document.createElement("div");
+    core.className = "card__meta";
+    core.textContent = row.is_core ? "Core course" : "Elective";
+    card.appendChild(core);
+
+    fragment.appendChild(card);
+  });
+
+  degreeCourseListEl.innerHTML = "";
+  degreeCourseListEl.appendChild(fragment);
+}
+
 function serializeForm(form) {
   const formData = new FormData(form);
   const payload = {};
@@ -244,6 +298,9 @@ function renderDegrees(degrees) {
   degrees.forEach((degree) => {
     const card = document.createElement("div");
     card.className = "card";
+    const degreeId = degree.degree_id ?? degree.id;
+    card.dataset.degreeId = degreeId;
+
     const title = document.createElement("div");
     title.className = "card__title";
     title.textContent = degree.name || degree.title || "Degree";
@@ -251,8 +308,15 @@ function renderDegrees(degrees) {
 
     const meta = document.createElement("div");
     meta.className = "card__meta";
-    meta.textContent = `Level: ${degree.level || "—"} • ID: ${degree.degree_id ?? degree.id ?? "?"}`;
+    meta.textContent = `Level: ${degree.level || "—"} • ID: ${degreeId ?? "?"}`;
     card.appendChild(meta);
+
+    card.addEventListener("click", () => {
+      if (degreeId != null) {
+        fetchDegreeCourses(degreeId, degree.name || `Degree ${degreeId}`);
+      }
+    });
+
     fragment.appendChild(card);
   });
 

@@ -53,6 +53,18 @@
       <div id="degree-list" class="card-list">
         <div class="empty">No data loaded yet.</div>
       </div>
+      <div class="panel nested">
+        <div class="panel__head">
+          <div>
+            <p class="eyebrow">Courses</p>
+            <h3>Courses for selected degree</h3>
+            <p class="subhead">Click a degree card to load its courses.</p>
+          </div>
+        </div>
+        <div id="degree-course-list" class="card-list tight">
+          <div class="empty">Select a degree to see courses.</div>
+        </div>
+      </div>
     </section>
 
     <section class="panel wide">
@@ -174,7 +186,6 @@
             </label>
             <label class="label">Term
               <select name="term" required>
-                <option value="">Term</option>
                 <option>Spring</option>
                 <option>Summer</option>
                 <option>Fall</option>

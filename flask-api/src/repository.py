@@ -65,3 +65,62 @@ def get_objectives():
     rows = cur.fetchall()
     cur.close()
     return rows
+
+
+# QUERYING SECTION
+def get_courses_associated_with_degrees(degree_id: int):
+    """Return courses for a degree, including whether each is core."""
+    cur = cnx.cursor(dictionary=True)
+    cur.execute(
+        """
+        SELECT c.course_id,
+               c.course_number,
+               c.name,
+               dc.is_core
+        FROM DEGREE_COURSE dc
+        JOIN COURSE c ON c.course_id = dc.course_id
+        WHERE dc.degree_id = %s
+        ORDER BY c.course_number;
+        """,
+        (degree_id,),
+    )
+    rows = cur.fetchall()
+    cur.close()
+    return rows
+
+
+# DEGREE-COURSE AND COURSE-OBJECTIVE ASSOCIATIONS
+def link_course_to_degree(degree_id: int, course_id: int, is_core: int = 0):
+    """Insert or update the degree-course link."""
+    cur = cnx.cursor()
+    cur.execute(
+        """
+        INSERT INTO DEGREE_COURSE (degree_id, course_id, is_core)
+        VALUES (%s, %s, %s)
+        ON DUPLICATE KEY UPDATE is_core = VALUES(is_core);
+        """,
+        (degree_id, course_id, is_core),
+    )
+    cnx.commit()
+    cur.close()
+    return {"degree_id": degree_id, "course_id": course_id, "is_core": is_core}
+
+
+def link_course_objective(degree_id: int, course_id: int, objective_id: int):
+    """Link a course to an objective within a degree context."""
+    cur = cnx.cursor()
+    cur.execute(
+        """
+        INSERT INTO COURSE_OBJECTIVE (degree_id, course_id, objective_id)
+        VALUES (%s, %s, %s)
+        ON DUPLICATE KEY UPDATE objective_id = VALUES(objective_id);
+        """,
+        (degree_id, course_id, objective_id),
+    )
+    cnx.commit()
+    cur.close()
+    return {
+        "degree_id": degree_id,
+        "course_id": course_id,
+        "objective_id": objective_id,
+    }
