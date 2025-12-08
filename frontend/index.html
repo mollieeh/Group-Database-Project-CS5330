@@ -3,20 +3,302 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Degrees</title>
+  <title>Program Evaluation Console</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="card">
-    <header>
-      <h1>Degrees</h1>
-      <button id="refresh">Refresh</button>
+  <main class="page">
+    <header class="hero">
+      <div class="hero__text">
+        <p class="eyebrow">Program Evaluation</p>
+        <h1>Program Evaluation Console</h1>
+        <p class="lede">
+          Capture degrees, courses, sections, learning objectives, and semester evaluations in one lightweight dashboard.
+          Point it at your Flask API and start sending data.
+        </p>
+        <div class="hero__controls">
+          <label class="label" for="api-base">API base URL</label>
+          <div class="input-row">
+            <input id="api-base" name="api-base" type="url" value="http://localhost:5000" placeholder="http://localhost:5000">
+            <button id="test-api" class="ghost">Test API</button>
+          </div>
+          <div id="api-status" class="badge badge--muted">Not connected</div>
+        </div>
+      </div>
+      <div class="hero__stats">
+        <div class="stat-card">
+          <div class="stat-label">Degrees detected</div>
+          <div id="degree-count" class="stat-value">—</div>
+          <button id="refresh-degrees" class="pill-btn">Refresh list</button>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Activity log</div>
+          <div class="stat-value stat-value--small">Live</div>
+          <div id="log" class="log"></div>
+        </div>
+      </div>
     </header>
-    <div id="status" class="status">Loading degrees…</div>
-    <div id="list-container">
-      <div class="empty">No degrees to display yet.</div>
-    </div>
-  </div>
+
+    <section class="panel wide">
+      <div class="panel__head">
+        <div>
+          <p class="eyebrow">Live data</p>
+          <h2>Degrees &amp; levels</h2>
+          <p class="subhead">Fetched from your `/degrees` endpoint. Works even if the API is still booting by falling back to sample data.</p>
+        </div>
+        <div class="toolbar">
+          <button id="reload-degrees" class="ghost">Reload</button>
+        </div>
+      </div>
+      <div id="degree-list" class="card-list">
+        <div class="empty">No data loaded yet.</div>
+      </div>
+    </section>
+
+    <section class="section-title">Data entry</section>
+    <section class="grid three">
+      <article class="panel">
+        <div class="panel__head">
+          <div>
+            <p class="eyebrow">Degree</p>
+            <h3>Create degree</h3>
+          </div>
+        </div>
+        <form id="degree-form" class="stack" data-endpoint="/degrees" data-method="POST">
+          <label class="label">Name
+            <input name="name" type="text" required placeholder="Computer Science">
+          </label>
+          <label class="label">Level
+            <select name="level" required>
+              <option value="">Select level</option>
+              <option>BA</option>
+              <option>BS</option>
+              <option>MS</option>
+              <option>Ph.D.</option>
+              <option>Cert</option>
+            </select>
+          </label>
+          <button type="submit">Save degree</button>
+        </form>
+      </article>
+
+      <article class="panel">
+        <div class="panel__head">
+          <div>
+            <p class="eyebrow">Course</p>
+            <h3>Add course</h3>
+          </div>
+        </div>
+        <form id="course-form" class="stack" data-endpoint="/courses" data-method="POST">
+          <label class="label">Course number
+            <input name="course_number" type="text" required placeholder="CSCI1234">
+          </label>
+          <label class="label">Name
+            <input name="name" type="text" required placeholder="Database Systems">
+          </label>
+          <button type="submit">Save course</button>
+        </form>
+      </article>
+
+      <article class="panel">
+        <div class="panel__head">
+          <div>
+            <p class="eyebrow">Instructor</p>
+            <h3>Add instructor</h3>
+          </div>
+        </div>
+        <form id="instructor-form" class="stack" data-endpoint="/instructors" data-method="POST">
+          <label class="label">Instructor ID
+            <input name="instructor_id" type="number" min="1" required placeholder="90012345">
+          </label>
+          <label class="label">Name
+            <input name="name" type="text" required placeholder="Ada Lovelace">
+          </label>
+          <button type="submit">Save instructor</button>
+        </form>
+      </article>
+    </section>
+
+    <section class="grid three">
+      <article class="panel">
+        <div class="panel__head">
+          <div>
+            <p class="eyebrow">Objective</p>
+            <h3>Add learning objective</h3>
+          </div>
+        </div>
+        <form id="objective-form" class="stack" data-endpoint="/objectives" data-method="POST">
+          <label class="label">Code
+            <input name="code" type="text" required placeholder="LO1">
+          </label>
+          <label class="label">Title
+            <input name="title" type="text" required maxlength="120" placeholder="Communicate complex technical ideas">
+          </label>
+          <label class="label">Description
+            <textarea name="description" required rows="3" placeholder="Extended text explaining how this objective is assessed."></textarea>
+          </label>
+          <button type="submit">Save objective</button>
+        </form>
+      </article>
+
+      <article class="panel">
+        <div class="panel__head">
+          <div>
+            <p class="eyebrow">Section</p>
+            <h3>Schedule section</h3>
+          </div>
+        </div>
+        <form id="section-form" class="stack" data-endpoint="/sections" data-method="POST">
+          <label class="label">Course ID
+            <input name="course_id" type="number" min="1" required placeholder="101">
+          </label>
+          <div class="inline">
+            <label class="label">Year
+              <input name="year" type="number" min="2000" required placeholder="2025">
+            </label>
+            <label class="label">Term
+              <select name="term" required>
+                <option value="">Term</option>
+                <option>Spring</option>
+                <option>Summer</option>
+                <option>Fall</option>
+              </select>
+            </label>
+            <label class="label">Section #
+              <input name="section_number" type="number" min="1" required placeholder="001">
+            </label>
+          </div>
+          <label class="label">Instructor ID
+            <input name="instructor_id" type="number" min="1" required placeholder="90012345">
+          </label>
+          <label class="label">Enrollment count
+            <input name="enrollment_count" type="number" min="0" required placeholder="30">
+          </label>
+          <button type="submit">Save section</button>
+        </form>
+      </article>
+
+      <article class="panel">
+        <div class="panel__head">
+          <div>
+            <p class="eyebrow">Mapping</p>
+            <h3>Associate course</h3>
+          </div>
+        </div>
+        <form id="association-form" class="stack" data-endpoint="/course-objectives" data-method="POST">
+          <label class="label">Degree ID
+            <input name="degree_id" type="number" min="1" required placeholder="1">
+          </label>
+          <label class="label">Course ID
+            <input name="course_id" type="number" min="1" required placeholder="101">
+          </label>
+          <label class="label">Objective ID
+            <input name="objective_id" type="number" min="1" required placeholder="301">
+          </label>
+          <label class="checkbox">
+            <input name="is_core" type="checkbox" value="1"> Mark as core course for this degree
+          </label>
+          <button type="submit">Link course to objective</button>
+        </form>
+      </article>
+    </section>
+
+    <section class="panel wide">
+      <div class="panel__head">
+        <div>
+          <p class="eyebrow">Evaluations</p>
+          <h2>Capture semester results</h2>
+          <p class="subhead">Select the context first, then log one objective at a time. Use the duplicate button to reuse entries across degrees if needed.</p>
+        </div>
+      </div>
+      <form id="evaluation-form" class="stack" data-endpoint="/evaluations" data-method="POST">
+        <div class="inline">
+          <label class="label">Degree ID
+            <input name="degree_id" type="number" min="1" required placeholder="1">
+          </label>
+          <label class="label">Section ID
+            <input name="section_id" type="number" min="1" required placeholder="5001">
+          </label>
+          <label class="label">Objective ID
+            <input name="objective_id" type="number" min="1" required placeholder="301">
+          </label>
+        </div>
+        <div class="inline">
+          <label class="label">Evaluation method
+            <input name="eval_method" type="text" required placeholder="Project, Quiz, Oral Presentation">
+          </label>
+          <label class="label">Duplicate to degree ID (optional)
+            <input name="duplicate_degree_id" type="number" min="1" placeholder="2">
+          </label>
+        </div>
+        <div class="grid four counts">
+          <label class="label">Count A
+            <input name="count_A" type="number" min="0" required value="0">
+          </label>
+          <label class="label">Count B
+            <input name="count_B" type="number" min="0" required value="0">
+          </label>
+          <label class="label">Count C
+            <input name="count_C" type="number" min="0" required value="0">
+          </label>
+          <label class="label">Count F
+            <input name="count_F" type="number" min="0" required value="0">
+          </label>
+        </div>
+        <label class="label">Improvement notes (optional)
+          <textarea name="improvement_text" rows="3" placeholder="What to improve next term?"></textarea>
+        </label>
+        <div class="toolbar">
+          <button type="button" id="duplicate-eval" class="ghost">Duplicate for another degree</button>
+          <button type="submit">Save evaluation</button>
+        </div>
+      </form>
+      <div id="evaluation-preview" class="mini-table"></div>
+    </section>
+
+    <section class="panel wide">
+      <div class="panel__head">
+        <div>
+          <p class="eyebrow">Queries</p>
+          <h2>Inspect your data</h2>
+          <p class="subhead">Run read-only lookups directly from the API.</p>
+        </div>
+      </div>
+      <div class="grid two">
+        <form id="degree-query-form" class="stack query" data-endpoint="/degrees">
+          <label class="label">Degree ID
+            <input name="degree_id" type="number" min="1" placeholder="1">
+          </label>
+          <label class="label">From year
+            <input name="from_year" type="number" min="2000" placeholder="2023">
+          </label>
+          <label class="label">To year
+            <input name="to_year" type="number" min="2000" placeholder="2025">
+          </label>
+          <button type="submit" class="ghost">Run degree lookup</button>
+        </form>
+
+        <form id="evaluation-query-form" class="stack query" data-endpoint="/evaluations">
+          <label class="label">Semester (year/term)
+            <div class="inline">
+              <input name="year" type="number" min="2000" placeholder="2025">
+              <select name="term">
+                <option value="">Term</option>
+                <option>Spring</option>
+                <option>Summer</option>
+                <option>Fall</option>
+              </select>
+            </div>
+          </label>
+          <label class="label">Success threshold (% without F)
+            <input name="min_success" type="number" min="0" max="100" step="1" placeholder="80">
+          </label>
+          <button type="submit" class="ghost">Run evaluation lookup</button>
+        </form>
+      </div>
+      <div id="query-results" class="card-list tight"></div>
+    </section>
+  </main>
 
   <script src="main.js"></script>
 </body>

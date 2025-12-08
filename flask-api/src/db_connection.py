@@ -6,7 +6,7 @@ import mysql.connector
 
 
 # Default location for the configuration file
-DEFAULT_CONFIG_PATH = Path(__file__).resolve().parent / "config.ini"
+DEFAULT_CONFIG_PATH = Path(__file__).resolve().parent / "../config.ini"
 
 
 def load_db_config(config_path: Union[str, Path] = DEFAULT_CONFIG_PATH) -> Dict[str, Union[str, int]]:

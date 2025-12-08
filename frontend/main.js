@@ -1,102 +1,298 @@
-const DEGREE_ENDPOINT = "http://localhost:5000/degrees";
+const apiInput = document.getElementById("api-base");
+const apiStatusEl = document.getElementById("api-status");
+const degreeListEl = document.getElementById("degree-list");
+const degreeCountEl = document.getElementById("degree-count");
+const logEl = document.getElementById("log");
+const evaluationPreviewEl = document.getElementById("evaluation-preview");
+const queryResultsEl = document.getElementById("query-results");
 
-const statusEl = document.getElementById("status");
-const listContainer = document.getElementById("list-container");
-const refreshButton = document.getElementById("refresh");
+const state = {
+  apiBase: apiInput.value.trim(),
+  degrees: [],
+  recentEvaluations: [],
+  sample: {
+    degrees: [
+      { degree_id: 1, name: "Computer Science", level: "BS" },
+      { degree_id: 2, name: "Data Science", level: "MS" },
+      { degree_id: 3, name: "Cybersecurity", level: "Cert" }
+    ],
+    evaluations: [
+      { degree_id: 1, section_id: 501, objective_id: 301, eval_method: "Project", count_A: 12, count_B: 8, count_C: 3, count_F: 0, improvement_text: "More checkpoints on milestone two." },
+      { degree_id: 2, section_id: 640, objective_id: 302, eval_method: "Quiz", count_A: 18, count_B: 6, count_C: 2, count_F: 1, improvement_text: "" }
+    ]
+  }
+};
 
-refreshButton.addEventListener("click", fetchDegrees);
-document.addEventListener("DOMContentLoaded", fetchDegrees);
+document.addEventListener("DOMContentLoaded", init);
+document.getElementById("test-api").addEventListener("click", testApiConnection);
+document.getElementById("refresh-degrees").addEventListener("click", fetchDegrees);
+document.getElementById("reload-degrees").addEventListener("click", fetchDegrees);
+document.getElementById("duplicate-eval").addEventListener("click", duplicateEvaluation);
 
-async function fetchDegrees() {
-  setStatus("Loading degrees…");
-  renderEmpty("Fetching data…");
+function init() {
+  const storedBase = localStorage.getItem("apiBase");
+  if (storedBase) {
+    apiInput.value = storedBase;
+    state.apiBase = storedBase;
+  }
 
-  try {
-    const response = await fetch(DEGREE_ENDPOINT);
-    if (!response.ok) {
-      throw new Error(`Request failed with status ${response.status}`);
-    }
+  apiInput.addEventListener("change", () => {
+    state.apiBase = apiInput.value.trim();
+    localStorage.setItem("apiBase", state.apiBase);
+    log(`API base set to ${state.apiBase}`);
+  });
 
-    const data = await response.json();
-    if (!Array.isArray(data)) {
-      throw new Error("Expected an array response from /degrees");
-    }
+  bindForms();
+  fetchDegrees();
+  renderEvaluationPreview();
+}
 
-    renderDegrees(data);
-    setStatus(`Loaded ${data.length} degree${data.length === 1 ? "" : "s"}.`);
-  } catch (error) {
-    setStatus(`Error: ${error.message}`);
-    renderEmpty("Unable to load degrees. Make sure the API is running on port 5000.");
+function bindForms() {
+  const forms = document.querySelectorAll("form[data-endpoint]");
+  forms.forEach((form) => {
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const endpoint = form.dataset.endpoint;
+      const method = form.dataset.method || "POST";
+      const payload = serializeForm(form);
+
+      if (form.id === "instructor-form" && !/^[0-9]{8}$/.test(payload.instructor_id || "")) {
+        log("Instructor ID must be exactly 8 digits.");
+        return;
+      }
+
+      const result = await apiRequest(endpoint, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      if (result.ok) {
+        log(`Saved via ${method} ${endpoint}`);
+        form.reset();
+        if (endpoint === "/degrees") {
+          fetchDegrees();
+        }
+        if (endpoint === "/evaluations") {
+          state.recentEvaluations.unshift(payload);
+          renderEvaluationPreview();
+        }
+      } else {
+        log(`Failed to reach ${endpoint}: ${result.error || result.status}`);
+      }
+    });
+  });
+
+  document.getElementById("degree-query-form").addEventListener("submit", (event) => {
+    event.preventDefault();
+    runQuery(event.target);
+  });
+  document.getElementById("evaluation-query-form").addEventListener("submit", (event) => {
+    event.preventDefault();
+    runQuery(event.target);
+  });
+}
+
+async function testApiConnection() {
+  const response = await apiRequest("/");
+  if (response.ok) {
+    setApiStatus("Connected", false);
+    log("API is reachable.");
+  } else {
+    setApiStatus("No response", true);
+    log("API did not respond.");
   }
 }
 
-function setStatus(message) {
-  statusEl.textContent = message;
+async function fetchDegrees() {
+  setApiStatus("Loading degrees…", false);
+  const response = await apiRequest("/degrees");
+  let degrees = [];
+
+  if (response.ok && Array.isArray(response.data)) {
+    degrees = response.data.map(normalizeDegree);
+  } else if (response.ok && Array.isArray(response.data?.degrees)) {
+    degrees = response.data.degrees.map(normalizeDegree);
+  } else {
+    degrees = state.sample.degrees;
+    log("Using sample degrees. Start the API to see live data.");
+  }
+
+  state.degrees = degrees;
+  renderDegrees(degrees);
+  setApiStatus(`Loaded ${degrees.length} item(s)`, false);
 }
 
-function renderEmpty(message) {
-  listContainer.innerHTML = "";
-  const emptyState = document.createElement("div");
-  emptyState.className = "empty";
-  emptyState.textContent = message;
-  listContainer.appendChild(emptyState);
+function normalizeDegree(degree) {
+  if (Array.isArray(degree)) {
+    const [degree_id, name, level] = degree;
+    return { degree_id, name, level };
+  }
+  return degree;
+}
+
+function serializeForm(form) {
+  const formData = new FormData(form);
+  const payload = {};
+  for (const [key, value] of formData.entries()) {
+    if (value === "") continue;
+    const numericAllowed = key !== "eval_method" && key !== "title" && key !== "description" && key !== "name" && key !== "code" && key !== "term" && key !== "instructor_id";
+    if (!Number.isNaN(Number(value)) && numericAllowed) {
+      payload[key] = Number(value);
+    } else {
+      payload[key] = value;
+    }
+  }
+  if (form.querySelector('input[name="is_core"]')) {
+    payload.is_core = form.querySelector('input[name="is_core"]').checked ? 1 : 0;
+  }
+  return payload;
+}
+
+async function apiRequest(path, options = {}) {
+  const url = path.startsWith("http") ? path : `${state.apiBase}${path}`;
+  try {
+    const response = await fetch(url, options);
+    const data = await safeJson(response);
+    return { ok: response.ok, status: response.status, data };
+  } catch (error) {
+    return { ok: false, status: "network-error", error: error.message };
+  }
+}
+
+async function safeJson(response) {
+  try {
+    return await response.json();
+  } catch (_) {
+    return null;
+  }
 }
 
 function renderDegrees(degrees) {
   if (!degrees.length) {
-    renderEmpty("No degrees returned by the API.");
+    degreeListEl.innerHTML = `<div class="empty">No degrees returned yet.</div>`;
+    degreeCountEl.textContent = "0";
     return;
   }
 
-  const list = document.createElement("ul");
-  degrees.forEach((degree, index) => {
-    const listItem = document.createElement("li");
-
+  degreeCountEl.textContent = degrees.length;
+  const fragment = document.createDocumentFragment();
+  degrees.forEach((degree) => {
+    const card = document.createElement("div");
+    card.className = "card";
     const title = document.createElement("div");
-    title.textContent = getDegreeTitle(degree, index);
+    title.className = "card__title";
+    title.textContent = degree.name || degree.title || "Degree";
+    card.appendChild(title);
 
-    listItem.appendChild(title);
-
-    const detailText = getDegreeDetail(degree);
-    if (detailText) {
-      const pill = document.createElement("span");
-      pill.className = "pill";
-      pill.textContent = detailText;
-      listItem.appendChild(pill);
-    }
-
-    list.appendChild(listItem);
+    const meta = document.createElement("div");
+    meta.className = "card__meta";
+    meta.textContent = `Level: ${degree.level || "—"} • ID: ${degree.degree_id ?? degree.id ?? "?"}`;
+    card.appendChild(meta);
+    fragment.appendChild(card);
   });
 
-  listContainer.innerHTML = "";
-  listContainer.appendChild(list);
+  degreeListEl.innerHTML = "";
+  degreeListEl.appendChild(fragment);
 }
 
-function getDegreeTitle(degree, index) {
-  if (degree && typeof degree === "object") {
-    const title =
-      degree.name ||
-      degree.title ||
-      degree.degree ||
-      degree.program ||
-      degree.major ||
-      degree.id;
-    if (title !== undefined && title !== null) {
-      return String(title);
-    }
-    return `Degree ${index + 1}`;
-  }
-
-  return String(degree);
+function setApiStatus(text, isError = false) {
+  apiStatusEl.textContent = text;
+  apiStatusEl.className = `badge ${isError ? "" : "badge--muted"}`;
 }
 
-function getDegreeDetail(degree) {
-  if (degree && typeof degree === "object") {
-    const entries = Object.entries(degree)
-      .filter(([, value]) => value !== undefined && value !== null && value !== "")
-      .map(([key, value]) => `${key}: ${value}`);
-    return entries.join(" • ");
+function duplicateEvaluation() {
+  const form = document.getElementById("evaluation-form");
+  const degreeId = form.elements.degree_id.value;
+  if (degreeId) {
+    form.elements.duplicate_degree_id.value = degreeId;
+    log(`Prepared duplicate entry for degree ${degreeId}.`);
+  }
+}
+
+function renderEvaluationPreview() {
+  const rows = state.recentEvaluations.length ? state.recentEvaluations : state.sample.evaluations;
+  if (!rows.length) {
+    evaluationPreviewEl.innerHTML = `<div class="empty">Submit an evaluation to preview it here.</div>`;
+    return;
   }
 
-  return "";
+  const table = document.createElement("table");
+  table.innerHTML = `
+    <thead>
+      <tr>
+        <th>Degree</th><th>Section</th><th>Objective</th><th>Method</th><th>A/B/C/F</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  `;
+  const body = table.querySelector("tbody");
+  rows.slice(0, 6).forEach((row) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${row.degree_id}</td>
+      <td>${row.section_id}</td>
+      <td>${row.objective_id}</td>
+      <td>${row.eval_method}</td>
+      <td>${row.count_A}/${row.count_B}/${row.count_C}/${row.count_F}</td>
+    `;
+    body.appendChild(tr);
+  });
+
+  evaluationPreviewEl.innerHTML = "";
+  evaluationPreviewEl.appendChild(table);
+}
+
+async function runQuery(form) {
+  const endpoint = form.dataset.endpoint || "/";
+  const payload = serializeForm(form);
+  const params = new URLSearchParams();
+  Object.entries(payload).forEach(([key, value]) => {
+    params.append(key, value);
+  });
+  const path = params.toString() ? `${endpoint}?${params.toString()}` : endpoint;
+  const response = await apiRequest(path, { method: "GET" });
+
+  if (response.ok && response.data) {
+    renderQueryResults(response.data);
+    log(`Query success: ${path}`);
+  } else {
+    log(`Query fallback for ${path}`);
+    renderQueryResults(state.sample.evaluations);
+  }
+}
+
+function renderQueryResults(results) {
+  if (!results || (Array.isArray(results) && results.length === 0)) {
+    queryResultsEl.innerHTML = `<div class="empty">No results yet.</div>`;
+    return;
+  }
+
+  const normalized = Array.isArray(results) ? results : [results];
+  const fragment = document.createDocumentFragment();
+  normalized.slice(0, 12).forEach((item, idx) => {
+    const card = document.createElement("div");
+    card.className = "card";
+    const title = document.createElement("div");
+    title.className = "card__title";
+    title.textContent = item.name || item.title || `Result ${idx + 1}`;
+    card.appendChild(title);
+
+    const meta = document.createElement("div");
+    meta.className = "card__meta";
+    meta.textContent = Object.entries(item)
+      .map(([k, v]) => `${k}: ${v}`)
+      .join(" • ");
+    card.appendChild(meta);
+    fragment.appendChild(card);
+  });
+  queryResultsEl.innerHTML = "";
+  queryResultsEl.appendChild(fragment);
+}
+
+function log(message) {
+  const time = new Date().toLocaleTimeString();
+  const entry = document.createElement("div");
+  entry.textContent = `[${time}] ${message}`;
+  logEl.prepend(entry);
 }

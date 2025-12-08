@@ -16,7 +16,7 @@ CREATE TABLE COURSE (
 
 
 CREATE TABLE INSTRUCTOR (
-    instructor_id INT NOT NULL PRIMARY KEY,
+    instructor_id CHAR(8) NOT NULL PRIMARY KEY,
     name          VARCHAR(200) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -70,7 +70,7 @@ CREATE TABLE SECTION (
     course_id        INT NOT NULL,
     year             INT NOT NULL,
     term             VARCHAR(10) NOT NULL,
-    instructor_id    INT NOT NULL,
+    instructor_id    CHAR(8) NOT NULL,
     section_number   INT NOT NULL,
     enrollment_count INT UNSIGNED NOT NULL DEFAULT 0,
     UNIQUE KEY uq_section (course_id, year, term, section_number),

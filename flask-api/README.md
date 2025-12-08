@@ -16,6 +16,11 @@ pip install -r requirements.txt # install dependencies
 
 ## Running the application for test Purposes
 
+#### Make sure you are in flask-api/src folder
+```bash
+cd flask-api/src # 
+```
+
 #### Simply Running the App
 ```bash
 flask --app application run
