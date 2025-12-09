@@ -337,5 +337,3 @@ def get_objectives_for_degree(degree_id: int):
 
 #def get_courses_for_objective
     #get all courses associated with a specific objective for a degree
-
-# EVALUATION QUERIES
