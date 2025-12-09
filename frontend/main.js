@@ -6,9 +6,11 @@ const degreeMessageEl = document.getElementById("degree-message");
 const courseMessageEl = document.getElementById("course-message");
 const instructorMessageEl = document.getElementById("instructor-message");
 const objectiveMessageEl = document.getElementById("objective-message");
+const assocMessageEl = document.getElementById("assoc-message");
 const logEl = document.getElementById("log");
 const evaluationPreviewEl = document.getElementById("evaluation-preview");
 const queryResultsEl = document.getElementById("query-results");
+const queryDegreeSelect = document.getElementById("query-degree-select");
 const objectiveListEl = document.getElementById("objective-list");
 const degreeCourseListEl = document.getElementById("degree-course-list");
 const sectionInstructorSelect = document.getElementById("section-instructor-select");
@@ -16,7 +18,6 @@ const sectionCourseSelect = document.getElementById("section-course-select");
 const assocDegreeSelect = document.getElementById("assoc-degree-select");
 const assocCourseSelect = document.getElementById("assoc-course-select");
 const assocObjectiveSelect = document.getElementById("assoc-objective-select");
-const assocDegreeCourseSelect = document.getElementById("assoc-degree-course-select");
 const assocDegreeCoreCheckbox = document.getElementById("assoc-degree-core");
 
 const state = {
@@ -59,7 +60,6 @@ document.getElementById("refresh-degrees").addEventListener("click", fetchDegree
 document.getElementById("reload-degrees").addEventListener("click", fetchDegrees);
 document.getElementById("reload-objectives").addEventListener("click", fetchObjectives);
 document.getElementById("duplicate-eval").addEventListener("click", duplicateEvaluation);
-document.getElementById("link-course-degree")?.addEventListener("click", linkCourseToDegree);
 
 function init() {
   const storedBase = localStorage.getItem("apiBase");
@@ -81,6 +81,10 @@ function init() {
   fetchObjectives();
   populateAssocDropdowns();
   renderEvaluationPreview();
+
+  if (queryDegreeSelect) {
+    populateQueryDegrees();
+  }
 }
 
 function bindForms() {
@@ -98,7 +102,8 @@ function bindForms() {
       }
 
       if (form.id === "association-form") {
-        payload.is_core = form.querySelector('input[name="is_core"]').checked ? 1 : 0;
+        await linkCourseObjectiveSubmit(event);
+        return;
       }
 
       const result = await apiRequest(endpoint, {
@@ -202,7 +207,8 @@ async function fetchDegrees() {
   renderDegrees(degrees);
   setApiStatus(`Loaded ${degrees.length} item(s)`, false);
   populateAssocDegrees();
-  populateDegreeCourseDegrees();
+  populateAssocObjectiveDegrees();
+  populateQueryDegrees();
 }
 
 async function fetchCourses() {
@@ -221,7 +227,6 @@ async function fetchCourses() {
   state.courses = courses;
   renderSectionCourseOptions(courses);
   populateAssocCourses();
-  populateDegreeCourseCourses();
 }
 
 async function fetchInstructors() {
@@ -265,6 +270,7 @@ async function fetchObjectives() {
   state.objectives = objectives;
   renderObjectives(objectives);
   populateAssocObjectives();
+  setAssociationMessage("Awaiting association…", "muted");
 }
 
 function renderObjectives(objectives) {
@@ -459,6 +465,14 @@ function setObjectiveMessage(text, tone = "muted") {
   objectiveMessageEl.className = `badge ${toneClass}`;
 }
 
+function setAssociationMessage(text, tone = "muted") {
+  if (!assocMessageEl) return;
+  const toneClass =
+    tone === "success" ? "badge--success" : tone === "error" ? "badge--error" : "badge--muted";
+  assocMessageEl.textContent = text;
+  assocMessageEl.className = `badge ${toneClass}`;
+}
+
 function duplicateEvaluation() {
   const form = document.getElementById("evaluation-form");
   const degreeId = form.elements.degree_id.value;
@@ -503,6 +517,33 @@ function renderEvaluationPreview() {
 
 async function runQuery(form) {
   const endpoint = form.dataset.endpoint || "/";
+  if (form.id === "degree-query-form") {
+    const degreeId = queryDegreeSelect?.value;
+    if (!degreeId) {
+      setApiStatus("Select a degree to view courses.", true);
+      return;
+    }
+    const coursePath = `/degrees/${degreeId}/courses`;
+    const objectivesPath = `/degrees/${degreeId}/objectives`;
+
+    const [courseRes, objectiveRes, sectionsRes] = await Promise.all([
+      apiRequest(coursePath, { method: "GET" }),
+      apiRequest(objectivesPath, { method: "GET" }),
+      apiRequest("/sections", { method: "GET" }),
+    ]);
+
+    const courses = courseRes.ok && Array.isArray(courseRes.data) ? courseRes.data : [];
+    const objectives = objectiveRes.ok && Array.isArray(objectiveRes.data) ? objectiveRes.data : [];
+
+    let sections = sectionsRes.ok && Array.isArray(sectionsRes.data) ? sectionsRes.data : [];
+    const courseIds = new Set(courses.map((c) => c.course_id));
+    sections = sections.filter((s) => courseIds.has(s.course_id));
+
+    renderDegreeQueryResults(degreeId, courses, objectives, sections);
+    log(`Query success: courses/objectives/sections for degree ${degreeId}`);
+    return;
+  }
+
   const payload = serializeForm(form);
   const params = new URLSearchParams();
   Object.entries(payload).forEach(([key, value]) => {
@@ -520,30 +561,93 @@ async function runQuery(form) {
   }
 }
 
-function renderQueryResults(results) {
-  if (!results || (Array.isArray(results) && results.length === 0)) {
-    queryResultsEl.innerHTML = `<div class="empty">No results yet.</div>`;
-    return;
+function renderDegreeQueryResults(degreeId, courses, objectives, sections) {
+  const fragment = document.createDocumentFragment();
+
+  const courseTitle = document.createElement("div");
+  courseTitle.className = "subhead";
+  courseTitle.textContent = `Courses for degree ${degreeId}:`;
+  fragment.appendChild(courseTitle);
+
+  if (!courses.length) {
+    const empty = document.createElement("div");
+    empty.className = "empty";
+    empty.textContent = "No courses found.";
+    fragment.appendChild(empty);
+  } else {
+    courses.forEach((c) => {
+      const card = document.createElement("div");
+      card.className = "card";
+      const title = document.createElement("div");
+      title.className = "card__title";
+      title.textContent = `${c.course_number || ""} — ${c.course_name || c.name || "Course"}`;
+      card.appendChild(title);
+      const meta = document.createElement("div");
+      meta.className = "card__meta";
+      meta.textContent = `ID: ${c.course_id ?? ""} • Type: ${
+        c.course_type || (c.is_core ? "Core" : "Elective")
+      }`;
+      card.appendChild(meta);
+      fragment.appendChild(card);
+    });
   }
 
-  const normalized = Array.isArray(results) ? results : [results];
-  const fragment = document.createDocumentFragment();
-  normalized.slice(0, 12).forEach((item, idx) => {
-    const card = document.createElement("div");
-    card.className = "card";
-    const title = document.createElement("div");
-    title.className = "card__title";
-    title.textContent = item.name || item.title || `Result ${idx + 1}`;
-    card.appendChild(title);
+  const objTitle = document.createElement("div");
+  objTitle.className = "subhead";
+  objTitle.textContent = "Objectives:";
+  fragment.appendChild(objTitle);
+  if (!objectives.length) {
+    const empty = document.createElement("div");
+    empty.className = "empty";
+    empty.textContent = "No objectives found.";
+    fragment.appendChild(empty);
+  } else {
+    objectives.forEach((o) => {
+      const card = document.createElement("div");
+      card.className = "card";
+      const title = document.createElement("div");
+      title.className = "card__title";
+      title.textContent = `${o.code || ""} — ${o.title || "Objective"}`;
+      card.appendChild(title);
+      const meta = document.createElement("div");
+      meta.className = "card__meta";
+      meta.textContent = o.description || "";
+      card.appendChild(meta);
+      fragment.appendChild(card);
+    });
+  }
 
-    const meta = document.createElement("div");
-    meta.className = "card__meta";
-    meta.textContent = Object.entries(item)
-      .map(([k, v]) => `${k}: ${v}`)
-      .join(" • ");
-    card.appendChild(meta);
-    fragment.appendChild(card);
-  });
+  const secTitle = document.createElement("div");
+  secTitle.className = "subhead";
+  secTitle.textContent = "Sections (filtered to this degree's courses):";
+  fragment.appendChild(secTitle);
+
+  if (!sections.length) {
+    const empty = document.createElement("div");
+    empty.className = "empty";
+    empty.textContent = "No sections found.";
+    fragment.appendChild(empty);
+  } else {
+    const ordered = sections.slice().sort((a, b) => {
+      const termOrder = { Spring: 1, Summer: 2, Fall: 3 };
+      if (b.year !== a.year) return b.year - a.year;
+      return (termOrder[b.term || b.semester] || 0) - (termOrder[a.term || a.semester] || 0);
+    });
+    ordered.forEach((s) => {
+      const card = document.createElement("div");
+      card.className = "card";
+      const title = document.createElement("div");
+      title.className = "card__title";
+      title.textContent = `Section ${s.section_number || ""} — ${s.semester || s.term || ""} ${s.year || ""}`;
+      card.appendChild(title);
+      const meta = document.createElement("div");
+      meta.className = "card__meta";
+      meta.textContent = `Course ID: ${s.course_id ?? ""} • Instructor: ${s.instructor_name || s.instructor_id || ""} • Enrollment: ${s.enrollment_count || s.enrollment || ""}`;
+      card.appendChild(meta);
+      fragment.appendChild(card);
+    });
+  }
+
   queryResultsEl.innerHTML = "";
   queryResultsEl.appendChild(fragment);
 }
@@ -588,10 +692,9 @@ function renderSectionInstructorOptions(instructors = []) {
 
 function populateAssocDropdowns() {
   populateAssocDegrees();
+  populateAssocObjectiveDegrees();
   populateAssocCourses();
   populateAssocObjectives();
-  populateDegreeCourseDegrees();
-  populateDegreeCourseCourses();
 }
 
 function populateAssocDegrees() {
@@ -610,6 +713,11 @@ function populateAssocDegrees() {
     option.textContent = `${deg.degree_id ?? deg.id}: ${deg.name || "Degree"} (${deg.level || ""})`.trim();
     assocDegreeSelect.appendChild(option);
   });
+}
+
+function populateAssocObjectiveDegrees() {
+  if (!assocDegreeSelect) return;
+  // degree select already populated by populateAssocDegrees
 }
 
 function populateAssocCourses() {
@@ -648,40 +756,57 @@ function populateAssocObjectives() {
   });
 }
 
-function populateDegreeCourseDegrees() {
-  if (!assocDegreeSelect) return;
-  assocDegreeSelect.innerHTML = "";
+function populateQueryDegrees() {
+  if (!queryDegreeSelect) return;
+  queryDegreeSelect.innerHTML = "";
   const placeholder = document.createElement("option");
   placeholder.value = "";
   placeholder.textContent = "Select a degree";
   placeholder.disabled = true;
   placeholder.selected = true;
-  assocDegreeSelect.appendChild(placeholder);
+  queryDegreeSelect.appendChild(placeholder);
 
   state.degrees.forEach((deg) => {
     const option = document.createElement("option");
     option.value = deg.degree_id ?? deg.id;
     option.textContent = `${deg.degree_id ?? deg.id}: ${deg.name || "Degree"} (${deg.level || ""})`.trim();
-    assocDegreeSelect.appendChild(option);
+    queryDegreeSelect.appendChild(option);
   });
 }
 
-function populateDegreeCourseCourses() {
-  if (!assocDegreeCourseSelect) return;
-  assocDegreeCourseSelect.innerHTML = "";
-  const placeholder = document.createElement("option");
-  placeholder.value = "";
-  placeholder.textContent = "Select a course";
-  placeholder.disabled = true;
-  placeholder.selected = true;
-  assocDegreeCourseSelect.appendChild(placeholder);
+async function linkCourseObjectiveSubmit(event) {
+  event.preventDefault();
+  const degreeId = assocDegreeSelect?.value;
+  const courseId = assocCourseSelect?.value;
+  const objectiveId = assocObjectiveSelect?.value;
+  const isCore = assocDegreeCoreCheckbox?.checked ? 1 : 0;
+  if (!degreeId || !courseId || !objectiveId) {
+    setAssociationMessage("Select degree, course, and objective.", "error");
+    return;
+  }
 
-  state.courses.forEach((course) => {
-    const option = document.createElement("option");
-    option.value = course.course_id ?? course.id;
-    option.textContent = `${course.course_number || ""} — ${course.name || "Course"}`.trim();
-    assocDegreeCourseSelect.appendChild(option);
+  const payload = {
+    degree_id: Number(degreeId),
+    course_id: Number(courseId),
+    objective_id: Number(objectiveId),
+    is_core: isCore,
+  };
+
+  const result = await apiRequest("/course-objectives", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
   });
+
+  if (result.ok) {
+    setAssociationMessage("Linked course to objective (and degree).", "success");
+  } else {
+    setAssociationMessage(result.error || "Could not link course to objective.", "error");
+  }
+}
+
+async function linkCourseToDegree() {
+  // No-op placeholder; combined in course-objective association.
 }
 
 function log(message) {

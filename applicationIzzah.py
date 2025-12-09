@@ -153,18 +153,7 @@ def objectives():
     if len(title) > 120:
         return jsonify({"error": "title must be 120 characters or less"}), 400
 
-    try:
-        created = repository.create_objective(code, title, description)
-    except mysql.connector.IntegrityError:
-        # Determine which unique constraint failed
-        if repository.get_objective_by_code(code):
-            return jsonify({"error": "Objective code must be unique"}), 409
-        if repository.get_objective_by_title(title):
-            return jsonify({"error": "Objective title must be unique"}), 409
-        return jsonify({"error": "Objective must have unique code and title"}), 409
-    except Exception:
-        return jsonify({"error": "Objective could not be created"}), 500
-
+    created = repository.create_objective(code, title, description)
     return jsonify(created), 201
 
 @app.route("/objectives/<int:objective_id>", methods=['GET'])
@@ -194,7 +183,7 @@ def sections():
     except (TypeError, ValueError):
         return jsonify({"error": "course_id is required"}), 400
 
-    section_number = (data.get('section_number') or "") # .strip()
+    section_number = (data.get('section_number') or "").strip()
     semester = (data.get('semester') or "").strip()
 
     try:
@@ -202,11 +191,15 @@ def sections():
     except (TypeError, ValueError):
         return jsonify({"error": "year is required"}), 400
 
-    # if not section_number or not semester:
-    #     return jsonify({"error": "section_number and semester are required"}), 400
+    if not section_number or not semester:
+        return jsonify({"error": "section_number and semester are required"}), 400
 
-    # if len(section_number) > 3:
-    #     return jsonify({"error": "section_number must be 3 digits or less"}), 400
+    valid_semesters = ['Spring', 'Summer', 'Fall']
+    if semester not in valid_semesters:
+        return jsonify({"error": f"semester must be one of: {', '.join(valid_semesters)}"}), 400
+
+    if len(section_number) > 3:
+        return jsonify({"error": "section_number must be 3 digits or less"}), 400
 
     enrollment = data.get('enrollment', 0)
     instructor_id = data.get('instructor_id')
@@ -324,7 +317,6 @@ def course_objectives():
 
     return jsonify({"degree_course": dc_link, "course_objective": co_link}), 201
 
-
 # INSTRUCTOR SECTIONS QUERY ENDPOINT
 @app.get("/instructors/<instructor_id>/sections")
 def api_get_sections_by_instructor(instructor_id):
@@ -422,6 +414,3 @@ def api_get_sections_success_rate(term, year):
         return jsonify(rows)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
-if __name__ == "__main__":
-    app.run(threaded=False, processes=1, debug=True)

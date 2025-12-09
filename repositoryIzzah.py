@@ -98,15 +98,7 @@ def get_instructor_by_id(instructor_id: chr):
 # SECTION
 def create_section(course_id: int, section_number: str, semester: str, year: int, enrollment: int, instructor_id: str):
     cur = cnx.cursor()
-    # Ensure the SEMESTER record exists to satisfy FK constraint.
-    cur.execute(
-        "INSERT IGNORE INTO SEMESTER (year, term) VALUES (%s, %s);",
-        (year, semester),
-    )
-    cur.execute(
-        "INSERT INTO SECTION (course_id, section_number, term, year, enrollment_count, instructor_id) VALUES (%s, %s, %s, %s, %s, %s);",
-        (course_id, section_number, semester, year, enrollment, instructor_id),
-    )
+    cur.execute("INSERT INTO SECTION (course_id, section_number, semester, year, enrollment, instructor_id) VALUES (%s, %s, %s, %s, %s, %s);", (course_id, section_number, semester, year, enrollment, instructor_id))
     cnx.commit()
     new_id = cur.lastrowid
     cur.close()
@@ -122,12 +114,12 @@ def create_section(course_id: int, section_number: str, semester: str, year: int
 
 def get_sections():
     cur = cnx.cursor(dictionary=True)
-    cur.execute("""SELECT s.section_id, s.course_id, c.course_number, c.name AS course_name, s.section_number, s.term AS semester, s.year, s.enrollment_count AS enrollment, s.instructor_id, i.name AS instructor_name
+    cur.execute("""SELECT s.section_id, s.course_id, c.course_number, c.name AS course_name, s.section_number, s.semester, s.year, s.enrollment, s.instructor_id, i.name AS instructor_name
                 FROM SECTION s
                 JOIN COURSE c on s.course_id = c.course_id
                 JOIN INSTRUCTOR i on s.instructor_id = i.instructor_id
                 ORDER BY s.year DESC, 
-                 FIELD(s.term, 'Spring', 'Summer', 'Fall') DESC,
+                 FIELD(s.semester, 'Spring', 'Summer', 'Fall') DESC,
                  c.course_number, s.section_number;""")
     rows = cur.fetchall()
     cur.close()
@@ -135,7 +127,7 @@ def get_sections():
 
 def get_section_by_id(section_id: int):
     cur = cnx.cursor(dictionary=True)
-    cur.execute("""SELECT s.section_id, s.course_id, c.course_number, c.name as course_name, s.section_number, s.term AS semester, s.year, s.enrollment_count AS enrollment, s.instructor_id, i.name as instructor_name
+    cur.execute("""SELECT s.section_id, s.course_id, c.course_number, c.name as course_name, s.section_number, s.semester, s.year, s.enrollment, s.instructor_id, i.name as instructor_name
         FROM SECTION s
         JOIN COURSE c ON s.course_id = c.course_id
         LEFT JOIN INSTRUCTOR i ON s.instructor_id = i.instructor_id
@@ -145,32 +137,33 @@ def get_section_by_id(section_id: int):
     cur.close()
     return row
 
+#Given an instructor: List all taught sections within semester range
 def get_section_by_instructor(instructor_id: str, start_year: int = None, end_year: int = None):
     #get sections taught by instructor give beased on range of semsters
     cur = cnx.cursor(dictionary=True)
     cur.execute("""
-            SELECT i.name AS instructor_name, c.course_number, c.name AS course_name, s.year, s.term AS semester, s.section_number 
+            SELECT i.name AS instructor_name, c.course_number, c.name AS course_name, s.year, s.term, s.section_number 
                 FROM INSTRUCTOR i
                 JOIN SECTION s on i.instructor_id = s.instructor_id
                 JOIN COURSE c on s.course_id = c.course_id
                 WHERE i.instructor_id = %s
 	                AND (s.year BETWEEN %s AND %s)
-                ORDER BY s.year DESC, FIELD(s.term, 'Spring', 'Summer', 'Fall') DESC, c.course_number, s.section_number;""", (instructor_id, start_year, end_year))
+                ORDER BY s.year DESC, s.term, c.course_number, s.section_number;""", (instructor_id, start_year, end_year))
     rows = cur.fetchall()
     cur.close()
     return rows
-
+#Given a course: List all sections of the courses within a semester range 
 def get_section_by_course(course_id: int, start_year: int = None, end_year: int = None):
     # get sections given a course for specific range of semesters
     cur = cnx.cursor(dictionary=True)
     cur.execute("""
-            SELECT s.section_number, i.name AS instructor_name, c.name AS course_name, s.year, s.term AS semester 
+            SELECT section_number, instructor_name, c.name AS course_name, s.year, s.term 
                 FROM COURSE c
                 JOIN SECTION s on c.course_id = s.course_id
                 JOIN INSTRUCTOR i on s.instructor_id = i.instructor_id
                 WHERE c.course_id = %s
 	                AND (s.year BETWEEN %s AND %s)
-                ORDER BY s.year DESC, FIELD(s.term, 'Spring', 'Summer', 'Fall') DESC, s.section_number;""", (course_id, start_year, end_year))
+                ORDER BY s.year DESC, s.term, section_number;""", (course_id, start_year, end_year))
     rows = cur.fetchall()
     cur.close()
     return rows
@@ -179,16 +172,11 @@ def get_section_by_course(course_id: int, start_year: int = None, end_year: int 
 # OBJECTIVE
 def create_objective(code: str, title: str, description: str):
     cur = cnx.cursor()
-    try:
-        cur.execute("INSERT INTO OBJECTIVE (code, title, description) VALUES (%s, %s, %s)", (code, title, description))
-        cnx.commit()
-        new_id = cur.lastrowid
-        return {"objective_id": new_id, "code": code, "title": title, "description": description}
-    except mysql.connector.IntegrityError:
-        cnx.rollback()
-        raise
-    finally:
-        cur.close()
+    cur.execute("INSERT INTO OBJECTIVE (code, title, description) VALUES (%s, %s, %s)", (code, title, description))
+    cnx.commit()
+    new_id = cur.lastrowid
+    cur.close()
+    return {"objective_id": new_id, "code": code, "title": title, "description": description}
 
 def get_objectives():
     cur = cnx.cursor(dictionary=True)
@@ -200,20 +188,6 @@ def get_objectives():
 def get_objective_by_id(objective_id: int):
     cur = cnx.cursor(dictionary=True)
     cur.execute("SELECT objective_id, code, title, description FROM OBJECTIVE WHERE objective_id = %s;", (objective_id,))
-    rows = cur.fetchone()
-    cur.close()
-    return rows
-
-def get_objective_by_code(code: str):
-    cur = cnx.cursor(dictionary=True)
-    cur.execute("SELECT objective_id, code, title, description FROM OBJECTIVE WHERE code = %s;", (code,))
-    rows = cur.fetchone()
-    cur.close()
-    return rows
-
-def get_objective_by_title(title: str):
-    cur = cnx.cursor(dictionary=True)
-    cur.execute("SELECT objective_id, code, title, description FROM OBJECTIVE WHERE title = %s;", (title,))
     rows = cur.fetchone()
     cur.close()
     return rows
@@ -247,7 +221,7 @@ def get_evaluations():
         SELECT e.section_id, e.objective_id, e.degree_id,
                e.eval_method, e.count_A, e.count_B, e.count_C, e.count_F,
                e.improvement_suggestion,
-               s.section_number, s.term AS semester, s.year,
+               s.section_number, s.semester, s.year,
                c.course_number, c.name as course_name,
                o.code as objective_code, o.title as objective_title,
                d.name as degree_name, d.level as degree_level
@@ -256,7 +230,7 @@ def get_evaluations():
         JOIN COURSE c ON s.course_id = c.course_id
         JOIN OBJECTIVE o ON e.objective_id = o.objective_id
         JOIN DEGREE d ON e.degree_id = d.degree_id
-        ORDER BY s.year DESC, FIELD(s.term, 'Spring', 'Summer', 'Fall') DESC;
+        ORDER BY s.year DESC, FIELD(s.semester, 'Spring', 'Summer', 'Fall') DESC;
     """)
     rows = cur.fetchall()
     cur.close()
@@ -265,6 +239,8 @@ def get_evaluations():
 
 
 # QUERYING SECTION
+
+# Given a degree: List all courses associated with the degree (denote as core or not)
 def get_courses_associated_with_degrees(degree_id: int):
     # Return courses for a degree, including whether each is core
     cur = cnx.cursor(dictionary=True)
@@ -302,24 +278,25 @@ def link_course_to_degree(degree_id: int, course_id: int, is_core: int = 0):
     cur.close()
     return {"degree_id": degree_id, "course_id": course_id, "is_core": is_core}
 
-def get_courses_associated_with_degree(degree_id: int):
-    # get courses for a degree, denotes whether each is core
-    cur = cnx.cursor(dictionary=True)
-    cur.execute("""
-                SELECT d.name AS degree_name, d.level AS degree_level, c.name AS course_name, c.course_number, 
-                CASE 
-                    WHEN dc.is_core = 1 THEN 'Core' 
-                    ELSE 'Elective' 
-                END AS course_type, dc.is_core
-                FROM DEGREE d
-                JOIN DEGREE_COURSE dc on d.degree_id = dc.degree_id
-                JOIN COURSE c on dc.course_id = c.course_id
-                WHERE d.degree_id = %s
-                ORDER BY c.course_number;
-    """, (degree_id,))
-    rows = cur.fetchall()
-    cur.close()
-    return rows
+# # Given a degree: List all courses associated with the degree (denote as core or not) x2
+# def get_courses_associated_with_degree(degree_id: int):
+#     # get courses for a degree, denotes whether each is core
+#     cur = cnx.cursor(dictionary=True)
+#     cur.execute("""
+#                 SELECT d.name AS degree_name, d.level AS degree_level, c.name AS course_name, c.course_number 
+#                 CASE 
+#                     WHEN dc.is_core = 1 THEN 'Core' 
+#                     ELSE 'Elective' 
+#                 END AS course_type, dc.is_core
+#                 FROM DEGREE d
+#                 JOIN DEGREE_COURSE dc on d.degree_id = dc.degree_id
+#                 JOIN COURSE c on dc.course_id = c.course_id
+#                 WHERE d.degree_id = %s
+#                 ORDER BY c.course_number;
+#     """, (degree_id,))
+#     rows = cur.fetchall()
+#     cur.close()
+#     return rows
 
 # Given a degree: List all sections that are being offered (in chronological order, where user can supply the time range)
 def get_section_for_degree(degree_id: int, start_year: int, start_term: str, end_year: int, end_term: str):
@@ -361,45 +338,19 @@ def get_section_for_degree(degree_id: int, start_year: int, start_term: str, end
     cur.close()
     return rows 
 
-
-
-        #course obj.
+#course obj.
 def link_course_objective(degree_id: int, course_id: int, objective_id: int):
     # Link a course to an objective within a degree context
     cur = cnx.cursor()
-    try:
-        # Ensure the degree-objective association exists for FK constraint.
-        cur.execute(
-            """
-            INSERT INTO DEGREE_OBJECTIVE (degree_id, objective_id)
-            VALUES (%s, %s)
-            ON DUPLICATE KEY UPDATE objective_id = VALUES(objective_id);
-            """,
-            (degree_id, objective_id),
-        )
-        # Link course to degree as well for completeness (no-op if already exists).
-        cur.execute(
-            """
-            INSERT INTO DEGREE_COURSE (degree_id, course_id, is_core)
-            VALUES (%s, %s, 0)
-            ON DUPLICATE KEY UPDATE is_core = is_core;
-            """,
-            (degree_id, course_id),
-        )
-        # Finally link course to objective within the degree context.
-        cur.execute(
-            """
-            INSERT INTO COURSE_OBJECTIVE (degree_id, course_id, objective_id)
-            VALUES (%s, %s, %s)
-            ON DUPLICATE KEY UPDATE objective_id = VALUES(objective_id);
-            """,
-            (degree_id, course_id, objective_id),
-        )
-        cnx.commit()
-    except mysql.connector.Error:
-        cnx.rollback()
-        cur.close()
-        raise
+    cur.execute(
+        """
+        INSERT INTO COURSE_OBJECTIVE (degree_id, course_id, objective_id)
+        VALUES (%s, %s, %s)
+        ON DUPLICATE KEY UPDATE objective_id = VALUES(objective_id);
+        """,
+        (degree_id, course_id, objective_id),
+    )
+    cnx.commit()
     cur.close()
     return {
         "degree_id": degree_id,
@@ -407,7 +358,7 @@ def link_course_objective(degree_id: int, course_id: int, objective_id: int):
         "objective_id": objective_id,
     }
 
-
+#Given a degree: list all objectives
 def get_objectives_for_degree(degree_id: int):
     #get objectives associated w a degree
     cur = cnx.cursor(dictionary=True)
@@ -422,7 +373,6 @@ def get_objectives_for_degree(degree_id: int):
     rows = cur.fetchall()
     cur.close()
     return rows
-
 
 #Given a degree, list all courses associated with each objective 
 def get_courses_for_objective(degree_id: int):

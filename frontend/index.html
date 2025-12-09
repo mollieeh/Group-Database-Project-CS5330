@@ -218,11 +218,17 @@
           <div>
             <p class="eyebrow">Mapping</p>
             <h3>Associate course with objective</h3>
+            <div id="assoc-message" class="badge badge--muted" role="status">Awaiting association…</div>
           </div>
         </div>
         <form id="association-form" class="stack" data-endpoint="/course-objectives" data-method="POST">
+          <label class="label">Degree
+            <select id="assoc-degree-select" required>
+              <option value="">Loading degrees…</option>
+            </select>
+          </label>
           <label class="label">Course
-            <select id="assoc-course-select" name="course_id" required>
+            <select id="assoc-course-select" required>
               <option value="">Loading courses…</option>
             </select>
           </label>
@@ -231,32 +237,10 @@
               <option value="">Loading objectives…</option>
             </select>
           </label>
-          <button type="submit">Link course to objective</button>
-        </form>
-      </article>
-
-      <article class="panel">
-        <div class="panel__head">
-          <div>
-            <p class="eyebrow">Mapping</p>
-            <h3>Associate course with degree</h3>
-          </div>
-        </div>
-        <form id="degree-course-form" class="stack">
-          <label class="label">Degree
-            <select id="assoc-degree-select" required>
-              <option value="">Loading degrees…</option>
-            </select>
-          </label>
-          <label class="label">Course
-            <select id="assoc-degree-course-select" required>
-              <option value="">Loading courses…</option>
-            </select>
-          </label>
           <label class="checkbox">
             <input id="assoc-degree-core" type="checkbox" value="1"> Mark as core course for this degree
           </label>
-          <button type="button" id="link-course-degree">Link course to degree</button>
+          <button type="submit">Link course to objective</button>
         </form>
       </article>
     </section>
@@ -324,16 +308,13 @@
       </div>
       <div class="grid two">
         <form id="degree-query-form" class="stack query" data-endpoint="/degrees">
-          <label class="label">Degree ID
-            <input name="degree_id" type="number" min="1" placeholder="1">
+          <label class="label">Degree
+            <select id="query-degree-select" name="degree_id" required>
+              <option value="">Select a degree</option>
+            </select>
           </label>
-          <label class="label">From year
-            <input name="from_year" type="number" min="2000" placeholder="2023">
-          </label>
-          <label class="label">To year
-            <input name="to_year" type="number" min="2000" placeholder="2025">
-          </label>
-          <button type="submit" class="ghost">Run degree lookup</button>
+          <button type="submit" class="ghost">Show courses, objectives, and sections</button>
+          <div class="subhead" id="degree-query-result-title">Courses:</div>
         </form>
 
         <form id="evaluation-query-form" class="stack query" data-endpoint="/evaluations">
