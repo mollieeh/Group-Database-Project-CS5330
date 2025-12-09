@@ -305,5 +305,5 @@ def course_objectives():
     return jsonify({"degree_course": dc_link, "course_objective": co_link}), 201
 
 
-# if __name__ == "__main__":
-#     app.run(debug=True, port=5000)
+if __name__ == "__main__":
+    app.run(threaded=False, processes=1, debug=True)
