@@ -381,7 +381,7 @@ def api_get_sections_for_degree(degree_id):
         return jsonify({"error": f"Missing parameters: {', '.join(missing)}"}), 400
 
     try:
-        rows = get_section_for_degree(
+        rows = repository.get_section_for_degree(
             degree_id, start_year, start_term, end_year, end_term
         )
         return jsonify(rows), 200
