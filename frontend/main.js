@@ -13,6 +13,9 @@ const objectiveListEl = document.getElementById("objective-list");
 const degreeCourseListEl = document.getElementById("degree-course-list");
 const sectionInstructorSelect = document.getElementById("section-instructor-select");
 const sectionCourseSelect = document.getElementById("section-course-select");
+const assocDegreeSelect = document.getElementById("assoc-degree-select");
+const assocCourseSelect = document.getElementById("assoc-course-select");
+const assocObjectiveSelect = document.getElementById("assoc-objective-select");
 
 const state = {
   apiBase: apiInput.value.trim(),
@@ -73,6 +76,7 @@ function init() {
   fetchCourses();
   fetchInstructors();
   fetchObjectives();
+  populateAssocDropdowns();
   renderEvaluationPreview();
 }
 
@@ -117,6 +121,7 @@ function bindForms() {
         if (endpoint === "/objectives") {
           setObjectiveMessage(`Saved objective "${payload.title}" (${payload.code})`, "success");
           fetchObjectives();
+          populateAssocObjectives();
         }
         if (endpoint === "/evaluations") {
           state.recentEvaluations.unshift(payload);
@@ -193,6 +198,7 @@ async function fetchDegrees() {
   state.degrees = degrees;
   renderDegrees(degrees);
   setApiStatus(`Loaded ${degrees.length} item(s)`, false);
+  populateAssocDegrees();
 }
 
 async function fetchCourses() {
@@ -210,6 +216,7 @@ async function fetchCourses() {
 
   state.courses = courses;
   renderSectionCourseOptions(courses);
+  populateAssocCourses();
 }
 
 async function fetchInstructors() {
@@ -252,6 +259,7 @@ async function fetchObjectives() {
 
   state.objectives = objectives;
   renderObjectives(objectives);
+  populateAssocObjectives();
 }
 
 function renderObjectives(objectives) {
@@ -570,6 +578,66 @@ function renderSectionInstructorOptions(instructors = []) {
     option.value = inst.instructor_id;
     option.textContent = `${inst.instructor_id || ""} — ${inst.name || "Instructor"}`.trim();
     sectionInstructorSelect.appendChild(option);
+  });
+}
+
+function populateAssocDropdowns() {
+  populateAssocDegrees();
+  populateAssocCourses();
+  populateAssocObjectives();
+}
+
+function populateAssocDegrees() {
+  if (!assocDegreeSelect) return;
+  assocDegreeSelect.innerHTML = "";
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "Select a degree";
+  placeholder.disabled = true;
+  placeholder.selected = true;
+  assocDegreeSelect.appendChild(placeholder);
+
+  state.degrees.forEach((deg) => {
+    const option = document.createElement("option");
+    option.value = deg.degree_id ?? deg.id;
+    option.textContent = `${deg.degree_id ?? deg.id}: ${deg.name || "Degree"} (${deg.level || ""})`.trim();
+    assocDegreeSelect.appendChild(option);
+  });
+}
+
+function populateAssocCourses() {
+  if (!assocCourseSelect) return;
+  assocCourseSelect.innerHTML = "";
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "Select a course";
+  placeholder.disabled = true;
+  placeholder.selected = true;
+  assocCourseSelect.appendChild(placeholder);
+
+  state.courses.forEach((course) => {
+    const option = document.createElement("option");
+    option.value = course.course_id ?? course.id;
+    option.textContent = `${course.course_number || ""} — ${course.name || "Course"}`.trim();
+    assocCourseSelect.appendChild(option);
+  });
+}
+
+function populateAssocObjectives() {
+  if (!assocObjectiveSelect) return;
+  assocObjectiveSelect.innerHTML = "";
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "Select an objective";
+  placeholder.disabled = true;
+  placeholder.selected = true;
+  assocObjectiveSelect.appendChild(placeholder);
+
+  state.objectives.forEach((obj) => {
+    const option = document.createElement("option");
+    option.value = obj.objective_id ?? obj.id;
+    option.textContent = `${obj.code || ""} — ${obj.title || "Objective"}`.trim();
+    assocObjectiveSelect.appendChild(option);
   });
 }
 

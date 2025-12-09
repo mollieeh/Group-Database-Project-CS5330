@@ -221,14 +221,20 @@
           </div>
         </div>
         <form id="association-form" class="stack" data-endpoint="/course-objectives" data-method="POST">
-          <label class="label">Degree ID
-            <input name="degree_id" type="number" min="1" required placeholder="1">
+          <label class="label">Degree
+            <select id="assoc-degree-select" name="degree_id" required>
+              <option value="">Loading degrees…</option>
+            </select>
           </label>
-          <label class="label">Course ID
-            <input name="course_id" type="number" min="1" required placeholder="101">
+          <label class="label">Course
+            <select id="assoc-course-select" name="course_id" required>
+              <option value="">Loading courses…</option>
+            </select>
           </label>
-          <label class="label">Objective ID
-            <input name="objective_id" type="number" min="1" required placeholder="301">
+          <label class="label">Objective
+            <select id="assoc-objective-select" name="objective_id" required>
+              <option value="">Loading objectives…</option>
+            </select>
           </label>
           <label class="checkbox">
             <input name="is_core" type="checkbox" value="1"> Mark as core course for this degree
