@@ -90,6 +90,7 @@
           <div>
             <p class="eyebrow">Degree</p>
             <h3>Create degree</h3>
+            <div id="degree-message" class="badge badge--muted" role="status">Awaiting entry…</div>
           </div>
         </div>
         <form id="degree-form" class="stack" data-endpoint="/degrees" data-method="POST">
@@ -115,6 +116,7 @@
           <div>
             <p class="eyebrow">Course</p>
             <h3>Add course</h3>
+            <div id="course-message" class="badge badge--muted" role="status">Awaiting entry…</div>
           </div>
         </div>
         <form id="course-form" class="stack" data-endpoint="/courses" data-method="POST">
@@ -133,6 +135,7 @@
           <div>
             <p class="eyebrow">Instructor</p>
             <h3>Add instructor</h3>
+            <div id="instructor-message" class="badge badge--muted" role="status">Awaiting entry…</div>
           </div>
         </div>
         <form id="instructor-form" class="stack" data-endpoint="/instructors" data-method="POST">
@@ -156,6 +159,7 @@
           </div>
         </div>
         <form id="objective-form" class="stack" data-endpoint="/objectives" data-method="POST">
+          <div id="objective-message" class="badge badge--muted" role="status">Awaiting entry…</div>
           <label class="label">Code
             <input name="code" type="text" required placeholder="LO1">
           </label>
@@ -174,11 +178,14 @@
           <div>
             <p class="eyebrow">Section</p>
             <h3>Schedule section</h3>
+            <div id="section-message" class="badge badge--muted" role="status">Awaiting entry…</div>
           </div>
         </div>
         <form id="section-form" class="stack" data-endpoint="/sections" data-method="POST">
-          <label class="label">Course ID
-            <input name="course_id" type="number" min="1" required placeholder="101">
+          <label class="label">Course
+            <select id="section-course-select" name="course_id" required>
+              <option value="">Loading courses…</option>
+            </select>
           </label>
           <div class="inline">
             <label class="label">Year
@@ -191,12 +198,14 @@
                 <option>Fall</option>
               </select>
             </label>
-            <label class="label">Section #
+            <label class="label">Section # (3 digits or less)
               <input name="section_number" type="number" min="1" required placeholder="001">
             </label>
           </div>
           <label class="label">Instructor ID
-            <input name="instructor_id" type="number" min="1" required placeholder="90012345">
+            <select id="section-instructor-select" name="instructor_id" required>
+              <option value="">Loading instructors…</option>
+            </select>
           </label>
           <label class="label">Enrollment count
             <input name="enrollment_count" type="number" min="0" required placeholder="30">
@@ -209,21 +218,28 @@
         <div class="panel__head">
           <div>
             <p class="eyebrow">Mapping</p>
-            <h3>Associate course</h3>
+            <h3>Associate course with objective</h3>
+            <div id="assoc-message" class="badge badge--muted" role="status">Awaiting association…</div>
           </div>
         </div>
         <form id="association-form" class="stack" data-endpoint="/course-objectives" data-method="POST">
-          <label class="label">Degree ID
-            <input name="degree_id" type="number" min="1" required placeholder="1">
+          <label class="label">Degree
+            <select id="assoc-degree-select" required>
+              <option value="">Loading degrees…</option>
+            </select>
           </label>
-          <label class="label">Course ID
-            <input name="course_id" type="number" min="1" required placeholder="101">
+          <label class="label">Course
+            <select id="assoc-course-select" required>
+              <option value="">Loading courses…</option>
+            </select>
           </label>
-          <label class="label">Objective ID
-            <input name="objective_id" type="number" min="1" required placeholder="301">
+          <label class="label">Objective
+            <select id="assoc-objective-select" name="objective_id" required>
+              <option value="">Loading objectives…</option>
+            </select>
           </label>
           <label class="checkbox">
-            <input name="is_core" type="checkbox" value="1"> Mark as core course for this degree
+            <input id="assoc-degree-core" type="checkbox" value="1"> Mark as core course for this degree
           </label>
           <button type="submit">Link course to objective</button>
         </form>
@@ -237,49 +253,74 @@
           <h2>Capture semester results</h2>
           <p class="subhead">Select the context first, then log one objective at a time. Use the duplicate button to reuse entries across degrees if needed.</p>
         </div>
-      </div>
-      <form id="evaluation-form" class="stack" data-endpoint="/evaluations" data-method="POST">
-        <div class="inline">
-          <label class="label">Degree ID
-            <input name="degree_id" type="number" min="1" required placeholder="1">
+        </div>
+        <form id="evaluation-form" class="stack" data-endpoint="/evaluations" data-method="POST">
+          <div class="inline">
+            <label class="label">Degree
+              <select id="evaluation-degree-select" name="degree_id" required>
+              <option value="">Select a degree</option>
+            </select>
           </label>
-          <label class="label">Section ID
-            <input name="section_id" type="number" min="1" required placeholder="5001">
+          <label class="label">Semester
+            <div class="inline">
+              <select id="evaluation-year-select" name="year" required>
+                <option value="">Select year</option>
+              </select>
+              <select name="term" required>
+                <option>Spring</option>
+                <option>Summer</option>
+                <option>Fall</option>
+              </select>
+            </div>
           </label>
-          <label class="label">Objective ID
-            <input name="objective_id" type="number" min="1" required placeholder="301">
+            <label class="label">Instructor
+            <select id="evaluation-instructor-select" name="instructor_id" required>
+              <option value="">Select an instructor</option>
+            </select>
           </label>
         </div>
-        <div class="inline">
-          <label class="label">Evaluation method
-            <input name="eval_method" type="text" required placeholder="Project, Quiz, Oral Presentation">
-          </label>
-          <label class="label">Duplicate to degree ID (optional)
-            <input name="duplicate_degree_id" type="number" min="1" placeholder="2">
-          </label>
-        </div>
-        <div class="grid four counts">
-          <label class="label">Count A
-            <input name="count_A" type="number" min="0" required value="0">
-          </label>
-          <label class="label">Count B
-            <input name="count_B" type="number" min="0" required value="0">
-          </label>
-          <label class="label">Count C
-            <input name="count_C" type="number" min="0" required value="0">
-          </label>
-          <label class="label">Count F
-            <input name="count_F" type="number" min="0" required value="0">
-          </label>
-        </div>
-        <label class="label">Improvement notes (optional)
-          <textarea name="improvement_text" rows="3" placeholder="What to improve next term?"></textarea>
-        </label>
-        <div class="toolbar">
-          <button type="button" id="duplicate-eval" class="ghost">Duplicate for another degree</button>
-          <button type="submit">Save evaluation</button>
-        </div>
-      </form>
+          <button type="button" id="list-instructor-sections" class="ghost">List sections for this instructor/semester</button>
+          <div id="instructor-sections-result" class="card-list tight"></div>
+
+          <div id="evaluation-details" style="display: none;">
+            <div class="subhead" id="evaluation-section-info">Select a section to continue.</div>
+            <input type="hidden" id="evaluation-section-id" name="section_id">
+            <label class="label">Objective
+              <select id="evaluation-objective-select" name="objective_id" required>
+                <option value="">Select objective</option>
+              </select>
+            </label>
+            <div class="inline">
+              <label class="label">Evaluation method
+                <input name="eval_method" type="text" required placeholder="Project, Quiz, Oral Presentation">
+              </label>
+              <label class="label">Duplicate to degree ID (optional)
+                <input name="duplicate_degree_id" type="number" min="1" placeholder="2">
+              </label>
+            </div>
+            <div class="grid four counts">
+              <label class="label">Count A
+                <input name="count_A" type="number" min="0" required value="0">
+              </label>
+              <label class="label">Count B
+                <input name="count_B" type="number" min="0" required value="0">
+              </label>
+              <label class="label">Count C
+                <input name="count_C" type="number" min="0" required value="0">
+              </label>
+              <label class="label">Count F
+                <input name="count_F" type="number" min="0" required value="0">
+              </label>
+            </div>
+            <label class="label">Improvement notes (optional)
+              <textarea name="improvement_text" rows="3" placeholder="What to improve next term?"></textarea>
+            </label>
+            <div class="toolbar">
+              <button type="button" id="duplicate-eval" class="ghost">Duplicate for another degree</button>
+              <button type="submit">Save evaluation</button>
+            </div>
+          </div>
+        </form>
       <div id="evaluation-preview" class="mini-table"></div>
     </section>
 
@@ -293,16 +334,13 @@
       </div>
       <div class="grid two">
         <form id="degree-query-form" class="stack query" data-endpoint="/degrees">
-          <label class="label">Degree ID
-            <input name="degree_id" type="number" min="1" placeholder="1">
+          <label class="label">Degree
+            <select id="query-degree-select" name="degree_id" required>
+              <option value="">Select a degree</option>
+            </select>
           </label>
-          <label class="label">From year
-            <input name="from_year" type="number" min="2000" placeholder="2023">
-          </label>
-          <label class="label">To year
-            <input name="to_year" type="number" min="2000" placeholder="2025">
-          </label>
-          <button type="submit" class="ghost">Run degree lookup</button>
+          <button type="submit" class="ghost">Show courses, objectives, and sections</button>
+          <div class="subhead" id="degree-query-result-title">Courses:</div>
         </form>
 
         <form id="evaluation-query-form" class="stack query" data-endpoint="/evaluations">
@@ -323,6 +361,52 @@
           <button type="submit" class="ghost">Run evaluation lookup</button>
         </form>
       </div>
+
+      
+      <form id="course-sections-query" class="stack query" data-endpoint="/courses/sections">
+        <label class="label">Course
+          <select id="course-query-select" name="course_id" required>
+            <option value="">Select a course</option>
+          </select>
+        </label>
+        <label class="label">Semester Range
+          <div class="inline">
+            <input name="start_year" type="number" placeholder="2020">
+            <input name="end_year" type="number" placeholder="2025">
+          </div>
+        </label>
+        <button type="submit" class="ghost">List Sections for Course</button>
+      </form>
+
+      <form id="instructor-sections-query" class="stack query" data-endpoint="/instructors/sections">
+        <label class="label">Instructor ID
+          <input name="instructor_id" type="number" placeholder="90012345" required>
+        </label>
+        <label class="label">Semester Range
+          <div class="inline">
+            <input name="start_year" type="number" placeholder="2020">
+            <input name="end_year" type="number" placeholder="2025">
+          </div>
+        </label>
+        <button type="submit" class="ghost">List Sections Taught</button>
+      </form>
+
+      <form id="evaluation-status-query" class="stack query" data-endpoint="/evaluations/status">
+        <label class="label">Semester
+          <div class="inline">
+            <input name="year" type="number" placeholder="2025">
+            <select name="term">
+              <option value="">Term</option>
+              <option>Spring</option>
+              <option>Summer</option>
+              <option>Fall</option>
+            </select>
+          </div>
+        </label>
+        <button type="submit" class="ghost">Show Evaluation Status</button>
+      </form>
+
+
       <div id="query-results" class="card-list tight"></div>
     </section>
   </main>
