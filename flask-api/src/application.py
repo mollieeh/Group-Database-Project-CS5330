@@ -374,7 +374,7 @@ def api_get_objectives_for_degree(degree_id):
 
 
 #DEGREE SECTION QUERY ENDPOINT
-@app.get("/degree/<int:degree_id>/sections")
+@app.get("/degrees/<int:degree_id>/sections")
 def api_get_sections_for_degree(degree_id):
     # Get query parameters
     start_year = request.args.get("start_year", type=int)
@@ -402,7 +402,7 @@ def api_get_sections_for_degree(degree_id):
 
 
 #COURSE OBJECTIVE ASSOSIATION QUERY
-@app.get("/degree/<int:degree_id>/objectives/courses")
+@app.get("/degrees/<int:degree_id>/objectives/courses")
 def api_get_courses_for_objectives(degree_id):
     try:
         rows = repository.get_courses_for_objective(degree_id)
@@ -437,4 +437,5 @@ def api_get_sections_success_rate(term, year):
 
 if __name__ == "__main__":
     app.run(threaded=False, processes=1, debug=True)
+
 
