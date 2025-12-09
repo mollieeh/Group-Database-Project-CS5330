@@ -361,6 +361,52 @@
           <button type="submit" class="ghost">Run evaluation lookup</button>
         </form>
       </div>
+
+      
+      <form id="course-sections-query" class="stack query" data-endpoint="/courses/sections">
+        <label class="label">Course
+          <select id="course-query-select" name="course_id" required>
+            <option value="">Select a course</option>
+          </select>
+        </label>
+        <label class="label">Semester Range
+          <div class="inline">
+            <input name="start_year" type="number" placeholder="2020">
+            <input name="end_year" type="number" placeholder="2025">
+          </div>
+        </label>
+        <button type="submit" class="ghost">List Sections for Course</button>
+      </form>
+
+      <form id="instructor-sections-query" class="stack query" data-endpoint="/instructors/sections">
+        <label class="label">Instructor ID
+          <input name="instructor_id" type="number" placeholder="90012345" required>
+        </label>
+        <label class="label">Semester Range
+          <div class="inline">
+            <input name="start_year" type="number" placeholder="2020">
+            <input name="end_year" type="number" placeholder="2025">
+          </div>
+        </label>
+        <button type="submit" class="ghost">List Sections Taught</button>
+      </form>
+
+      <form id="evaluation-status-query" class="stack query" data-endpoint="/evaluations/status">
+        <label class="label">Semester
+          <div class="inline">
+            <input name="year" type="number" placeholder="2025">
+            <select name="term">
+              <option value="">Term</option>
+              <option>Spring</option>
+              <option>Summer</option>
+              <option>Fall</option>
+            </select>
+          </div>
+        </label>
+        <button type="submit" class="ghost">Show Evaluation Status</button>
+      </form>
+
+
       <div id="query-results" class="card-list tight"></div>
     </section>
   </main>

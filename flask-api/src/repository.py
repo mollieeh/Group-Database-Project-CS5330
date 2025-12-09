@@ -250,6 +250,11 @@ def get_objective_by_title(title: str):
 def create_evaluation(section_id: int, degree_id: int, objective_id: int, eval_method: str = None, count_A: int = 0, count_B: int = 0, count_C: int = 0, count_F: int = 0, improvement_text: str = None):
     cur = cnx.cursor()
     try:
+        # Verify objective exists to avoid FK failures.
+        cur.execute("SELECT 1 FROM OBJECTIVE WHERE objective_id = %s;", (objective_id,))
+        if cur.fetchone() is None:
+            raise ValueError(f"Objective {objective_id} does not exist")
+
         # Ensure the degree/objective combo exists for FK constraint.
         cur.execute(
             """

@@ -285,10 +285,16 @@ def evaluations():
 
     improvement_text = data.get('improvement_text')
 
-    created = repository.create_evaluation(
-        section_id, objective_id, degree_id, eval_method,
-        count_A, count_B, count_C, count_F, improvement_text
-    )
+    try:
+        created = repository.create_evaluation(
+            section_id, degree_id, objective_id, eval_method,
+            count_A, count_B, count_C, count_F, improvement_text
+        )
+    except ValueError as ve:
+        return jsonify({"error": str(ve)}), 400
+    except mysql.connector.IntegrityError as ie:
+        return jsonify({"error": str(ie)}), 409
+
     return jsonify(created), 201
 
 
