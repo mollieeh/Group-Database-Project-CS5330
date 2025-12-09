@@ -171,11 +171,16 @@ def get_section_by_course(course_id: int, start_year: int = None, end_year: int 
 # OBJECTIVE
 def create_objective(code: str, title: str, description: str):
     cur = cnx.cursor()
-    cur.execute("INSERT INTO OBJECTIVE (code, title, description) VALUES (%s, %s, %s)", (code, title, description))
-    cnx.commit()
-    new_id = cur.lastrowid
-    cur.close()
-    return {"objective_id": new_id, "code": code, "title": title, "description": description}
+    try:
+        cur.execute("INSERT INTO OBJECTIVE (code, title, description) VALUES (%s, %s, %s)", (code, title, description))
+        cnx.commit()
+        new_id = cur.lastrowid
+        return {"objective_id": new_id, "code": code, "title": title, "description": description}
+    except mysql.connector.IntegrityError:
+        cnx.rollback()
+        raise
+    finally:
+        cur.close()
 
 def get_objectives():
     cur = cnx.cursor(dictionary=True)
@@ -187,6 +192,20 @@ def get_objectives():
 def get_objective_by_id(objective_id: int):
     cur = cnx.cursor(dictionary=True)
     cur.execute("SELECT objective_id, code, title, description FROM OBJECTIVE WHERE objective_id = %s;", (objective_id,))
+    rows = cur.fetchone()
+    cur.close()
+    return rows
+
+def get_objective_by_code(code: str):
+    cur = cnx.cursor(dictionary=True)
+    cur.execute("SELECT objective_id, code, title, description FROM OBJECTIVE WHERE code = %s;", (code,))
+    rows = cur.fetchone()
+    cur.close()
+    return rows
+
+def get_objective_by_title(title: str):
+    cur = cnx.cursor(dictionary=True)
+    cur.execute("SELECT objective_id, code, title, description FROM OBJECTIVE WHERE title = %s;", (title,))
     rows = cur.fetchone()
     cur.close()
     return rows

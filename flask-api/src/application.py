@@ -153,7 +153,18 @@ def objectives():
     if len(title) > 120:
         return jsonify({"error": "title must be 120 characters or less"}), 400
 
-    created = repository.create_objective(code, title, description)
+    try:
+        created = repository.create_objective(code, title, description)
+    except mysql.connector.IntegrityError:
+        # Determine which unique constraint failed
+        if repository.get_objective_by_code(code):
+            return jsonify({"error": "Objective code must be unique"}), 409
+        if repository.get_objective_by_title(title):
+            return jsonify({"error": "Objective title must be unique"}), 409
+        return jsonify({"error": "Objective must have unique code and title"}), 409
+    except Exception:
+        return jsonify({"error": "Objective could not be created"}), 500
+
     return jsonify(created), 201
 
 @app.route("/objectives/<int:objective_id>", methods=['GET'])

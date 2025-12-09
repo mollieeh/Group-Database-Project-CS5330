@@ -5,6 +5,7 @@ const degreeCountEl = document.getElementById("degree-count");
 const degreeMessageEl = document.getElementById("degree-message");
 const courseMessageEl = document.getElementById("course-message");
 const instructorMessageEl = document.getElementById("instructor-message");
+const objectiveMessageEl = document.getElementById("objective-message");
 const logEl = document.getElementById("log");
 const evaluationPreviewEl = document.getElementById("evaluation-preview");
 const queryResultsEl = document.getElementById("query-results");
@@ -114,6 +115,7 @@ function bindForms() {
           setInstructorMessage(`Saved instructor "${payload.name}" (${payload.instructor_id})`, "success");
         }
         if (endpoint === "/objectives") {
+          setObjectiveMessage(`Saved objective "${payload.title}" (${payload.code})`, "success");
           fetchObjectives();
         }
         if (endpoint === "/evaluations") {
@@ -141,6 +143,12 @@ function bindForms() {
           log("Instructor already exists.");
         } else if (endpoint === "/instructors") {
           setInstructorMessage("Could not save instructor. Please try again.", "error");
+        }
+        if (endpoint === "/objectives" && result.status === 409) {
+          setObjectiveMessage(result.error || "Objective code/title must be unique.", "error");
+          log("Objective already exists.");
+        } else if (endpoint === "/objectives") {
+          setObjectiveMessage("Could not save objective. Please try again.", "error");
         }
         log(`Failed to reach ${endpoint}: ${result.error || result.status}`);
       }
@@ -428,6 +436,14 @@ function setInstructorMessage(text, tone = "muted") {
     tone === "success" ? "badge--success" : tone === "error" ? "badge--error" : "badge--muted";
   instructorMessageEl.textContent = text;
   instructorMessageEl.className = `badge ${toneClass}`;
+}
+
+function setObjectiveMessage(text, tone = "muted") {
+  if (!objectiveMessageEl) return;
+  const toneClass =
+    tone === "success" ? "badge--success" : tone === "error" ? "badge--error" : "badge--muted";
+  objectiveMessageEl.textContent = text;
+  objectiveMessageEl.className = `badge ${toneClass}`;
 }
 
 function duplicateEvaluation() {
