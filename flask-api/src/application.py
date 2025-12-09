@@ -194,8 +194,8 @@ def sections():
     except (TypeError, ValueError):
         return jsonify({"error": "course_id is required"}), 400
 
-    section_number = (data.get('section_number') or "") # .strip()
-    semester = (data.get('semester') or "").strip()
+    section_number = str(data.get('section_number') or "") # .strip()
+    semester = (data.get('semester') or data.get('term') or "").strip()
 
     try:
         year = int(data.get('year'))
@@ -247,9 +247,13 @@ def course_sections(course_id: int):
 def instructor_sections(instructor_id: str):
     year = request.args.get('year', type=int)
     term = request.args.get('term')
+    degree_id = request.args.get('degree_id', type=int)
+
+    if year is None or not term:
+        return jsonify({"error": "year and term are required"}), 400
 
     sections = repository.get_section_by_instructor(
-        instructor_id, year, term
+        instructor_id, year, term, degree_id
     )
     return jsonify(sections)
 

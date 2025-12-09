@@ -256,8 +256,8 @@
         </div>
         <form id="evaluation-form" class="stack" data-endpoint="/evaluations" data-method="POST">
           <div class="inline">
-          <label class="label">Degree
-            <select id="evaluation-degree-select" name="degree_id" required>
+            <label class="label">Degree
+              <select id="evaluation-degree-select" name="degree_id" required>
               <option value="">Select a degree</option>
             </select>
           </label>
@@ -274,43 +274,53 @@
             </div>
           </label>
             <label class="label">Instructor
-              <select id="evaluation-instructor-select" name="instructor_id" required>
-                <option value="">Select an instructor</option>
-              </select>
-            </label>
-          </div>
+            <select id="evaluation-instructor-select" name="instructor_id" required>
+              <option value="">Select an instructor</option>
+            </select>
+          </label>
+        </div>
           <button type="button" id="list-instructor-sections" class="ghost">List sections for this instructor/semester</button>
           <div id="instructor-sections-result" class="card-list tight"></div>
-        <div class="inline">
-          <label class="label">Evaluation method
-            <input name="eval_method" type="text" required placeholder="Project, Quiz, Oral Presentation">
-          </label>
-          <label class="label">Duplicate to degree ID (optional)
-            <input name="duplicate_degree_id" type="number" min="1" placeholder="2">
-          </label>
-        </div>
-        <div class="grid four counts">
-          <label class="label">Count A
-            <input name="count_A" type="number" min="0" required value="0">
-          </label>
-          <label class="label">Count B
-            <input name="count_B" type="number" min="0" required value="0">
-          </label>
-          <label class="label">Count C
-            <input name="count_C" type="number" min="0" required value="0">
-          </label>
-          <label class="label">Count F
-            <input name="count_F" type="number" min="0" required value="0">
-          </label>
-        </div>
-        <label class="label">Improvement notes (optional)
-          <textarea name="improvement_text" rows="3" placeholder="What to improve next term?"></textarea>
-        </label>
-        <div class="toolbar">
-          <button type="button" id="duplicate-eval" class="ghost">Duplicate for another degree</button>
-          <button type="submit">Save evaluation</button>
-        </div>
-      </form>
+
+          <div id="evaluation-details" style="display: none;">
+            <div class="subhead" id="evaluation-section-info">Select a section to continue.</div>
+            <input type="hidden" id="evaluation-section-id" name="section_id">
+            <label class="label">Objective
+              <select id="evaluation-objective-select" name="objective_id" required>
+                <option value="">Select objective</option>
+              </select>
+            </label>
+            <div class="inline">
+              <label class="label">Evaluation method
+                <input name="eval_method" type="text" required placeholder="Project, Quiz, Oral Presentation">
+              </label>
+              <label class="label">Duplicate to degree ID (optional)
+                <input name="duplicate_degree_id" type="number" min="1" placeholder="2">
+              </label>
+            </div>
+            <div class="grid four counts">
+              <label class="label">Count A
+                <input name="count_A" type="number" min="0" required value="0">
+              </label>
+              <label class="label">Count B
+                <input name="count_B" type="number" min="0" required value="0">
+              </label>
+              <label class="label">Count C
+                <input name="count_C" type="number" min="0" required value="0">
+              </label>
+              <label class="label">Count F
+                <input name="count_F" type="number" min="0" required value="0">
+              </label>
+            </div>
+            <label class="label">Improvement notes (optional)
+              <textarea name="improvement_text" rows="3" placeholder="What to improve next term?"></textarea>
+            </label>
+            <div class="toolbar">
+              <button type="button" id="duplicate-eval" class="ghost">Duplicate for another degree</button>
+              <button type="submit">Save evaluation</button>
+            </div>
+          </div>
+        </form>
       <div id="evaluation-preview" class="mini-table"></div>
     </section>
 

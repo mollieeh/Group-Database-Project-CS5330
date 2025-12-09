@@ -25,6 +25,10 @@ const evalInstructorSelect = document.getElementById("evaluation-instructor-sele
 const evalYearSelect = document.getElementById("evaluation-year-select");
 const listInstructorSectionsBtn = document.getElementById("list-instructor-sections");
 const instructorSectionsResultEl = document.getElementById("instructor-sections-result");
+const evaluationDetailsEl = document.getElementById("evaluation-details");
+const evaluationSectionInfoEl = document.getElementById("evaluation-section-info");
+const evaluationSectionIdInput = document.getElementById("evaluation-section-id");
+const evaluationObjectiveSelect = document.getElementById("evaluation-objective-select");
 
 const state = {
   apiBase: apiInput.value.trim(),
@@ -89,6 +93,10 @@ function init() {
   populateEvalYears();
   populateAssocDropdowns();
   renderEvaluationPreview();
+
+  if (evaluationDetailsEl) {
+    evaluationDetailsEl.style.display = "none";
+  }
 
   if (queryDegreeSelect) {
     populateQueryDegrees();
@@ -316,6 +324,7 @@ async function fetchObjectives() {
   state.objectives = objectives;
   renderObjectives(objectives);
   populateAssocObjectives();
+  populateEvaluationObjectives();
   setAssociationMessage("Awaiting association…", "muted");
 }
 
@@ -767,20 +776,38 @@ async function listInstructorSections() {
   const instructorId = evalInstructorSelect?.value;
   const term = document.querySelector('#evaluation-form select[name="term"]')?.value;
   const year = evalYearSelect?.value;
+  const degreeId = evalDegreeSelect?.value;
 
-  if (!instructorId || !term || !year) {
-    setApiStatus("Select instructor and semester to list sections.", true);
+  if (!instructorId || !term || !year || !degreeId) {
+    setApiStatus("Select degree, instructor, and semester to list sections.", true);
     return;
   }
 
   const sectionRes = await apiRequest(
-    `/instructors/${instructorId}/sections?year=${year}&term=${encodeURIComponent(term)}`,
+    `/instructors/${instructorId}/sections?year=${year}&term=${encodeURIComponent(term)}&degree_id=${degreeId}`,
     { method: "GET" }
   );
 
   const sections = sectionRes.ok && Array.isArray(sectionRes.data) ? sectionRes.data : [];
 
-  renderSectionsList(sections, `Sections for ${instructorId} in ${term} ${year}`, instructorSectionsResultEl);
+  renderSectionsList(
+    sections,
+    `Sections for ${instructorId} in ${term} ${year}`,
+    instructorSectionsResultEl,
+    (section) => {
+      if (section && section.section_id) {
+        showEvaluationDetails(section);
+      }
+    }
+  );
+  if (evaluationDetailsEl) {
+    evaluationDetailsEl.style.display = "none";
+  }
+  if (evaluationSectionInfoEl) {
+    evaluationSectionInfoEl.textContent = sections.length
+      ? "Select a section to continue."
+      : "No sections returned.";
+  }
   if (sections.length) {
     setApiStatus("Loaded sections.", false);
   } else {
@@ -859,6 +886,25 @@ function populateAssocObjectives() {
   });
 }
 
+function populateEvaluationObjectives() {
+  if (!evaluationObjectiveSelect) return;
+  evaluationObjectiveSelect.innerHTML = "";
+
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "Select objective";
+  placeholder.disabled = true;
+  placeholder.selected = true;
+  evaluationObjectiveSelect.appendChild(placeholder);
+
+  state.objectives.forEach((obj) => {
+    const option = document.createElement("option");
+    option.value = obj.objective_id ?? obj.id;
+    option.textContent = `${obj.code || ""} — ${obj.title || "Objective"}`.trim();
+    evaluationObjectiveSelect.appendChild(option);
+  });
+}
+
 function populateQueryDegrees() {
   if (!queryDegreeSelect) return;
   queryDegreeSelect.innerHTML = "";
@@ -918,7 +964,7 @@ function log(message) {
   entry.textContent = `[${time}] ${message}`;
   logEl.prepend(entry);
 }
-function renderSectionsList(sections = [], title = "", targetEl = queryResultsEl) {
+function renderSectionsList(sections = [], title = "", targetEl = queryResultsEl, onSelect) {
   if (!targetEl) return;
   if (!sections.length) {
     const prefix = title ? `${title}: ` : "";
@@ -944,11 +990,80 @@ function renderSectionsList(sections = [], title = "", targetEl = queryResultsEl
 
     const meta = document.createElement("div");
     meta.className = "card__meta";
-    meta.textContent = `Course: ${s.course_id ?? ""} • Instructor: ${s.instructor_name || s.instructor_id || ""}`;
+    const courseLabel = s.course_number || s.course_id || "";
+    meta.textContent = `Course: ${courseLabel} • Instructor: ${s.instructor_name || s.instructor_id || ""}`;
     card.appendChild(meta);
+    if (typeof onSelect === "function") {
+      card.classList.add("clickable");
+      card.tabIndex = 0;
+      card.addEventListener("click", () => onSelect(s));
+      card.addEventListener("keypress", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onSelect(s);
+        }
+      });
+    }
     fragment.appendChild(card);
   });
 
   targetEl.innerHTML = "";
   targetEl.appendChild(fragment);
+}
+
+function resetEvaluationFields() {
+  const form = document.getElementById("evaluation-form");
+  if (!form) return;
+  form.elements.eval_method.value = "";
+  form.elements.count_A.value = 0;
+  form.elements.count_B.value = 0;
+  form.elements.count_C.value = 0;
+  form.elements.count_F.value = 0;
+  form.elements.improvement_text.value = "";
+  if (evaluationObjectiveSelect) {
+    evaluationObjectiveSelect.value = "";
+  }
+}
+
+async function showEvaluationDetails(section) {
+  if (!evaluationDetailsEl || !evaluationSectionIdInput) return;
+  resetEvaluationFields();
+  evaluationSectionIdInput.value = section.section_id || "";
+  const label = [
+    section.course_number || section.course_name || section.course_id || "",
+    section.section_number ? `Section ${section.section_number}` : "",
+    section.term || section.semester ? `${section.term || section.semester} ${section.year || ""}` : "",
+  ]
+    .filter(Boolean)
+    .join(" — ");
+  if (evaluationSectionInfoEl) {
+    evaluationSectionInfoEl.textContent = label || "Selected section";
+  }
+  evaluationDetailsEl.style.display = "block";
+
+  const degreeId = evalDegreeSelect?.value;
+  if (!degreeId) return;
+
+  const evalRes = await apiRequest("/evaluations", { method: "GET" });
+  const rows = evalRes.ok && Array.isArray(evalRes.data) ? evalRes.data : [];
+  const match = rows.find(
+    (row) =>
+      Number(row.section_id) === Number(section.section_id) &&
+      Number(row.degree_id) === Number(degreeId)
+  );
+
+  if (match) {
+    if (evaluationObjectiveSelect && match.objective_id) {
+      evaluationObjectiveSelect.value = String(match.objective_id);
+    }
+    const form = document.getElementById("evaluation-form");
+    if (form) {
+      form.elements.eval_method.value = match.eval_method || "";
+      form.elements.count_A.value = match.count_A ?? 0;
+      form.elements.count_B.value = match.count_B ?? 0;
+      form.elements.count_C.value = match.count_C ?? 0;
+      form.elements.count_F.value = match.count_F ?? 0;
+      form.elements.improvement_text.value = match.improvement_text || match.improvement_suggestion || "";
+    }
+  }
 }

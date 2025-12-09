@@ -145,26 +145,43 @@ def get_section_by_id(section_id: int):
     cur.close()
     return row
 
-def get_section_by_instructor(instructor_id: str, year: int = None, term: str = None):
-    # get sections taught by instructor based on year and optional term
+def get_section_by_instructor(instructor_id: str, year: int = None, term: str = None, degree_id: int = None):
+    # get sections taught by instructor filtered by year/term and optionally degree
     cur = cnx.cursor(dictionary=True)
-    conditions = ["i.instructor_id = %s"]
+    conditions = ["s.instructor_id = %s"]
     params = [instructor_id]
+    join_degree = ""
+
     if year is not None:
         conditions.append("s.year = %s")
         params.append(year)
     if term:
         conditions.append("s.term = %s")
         params.append(term)
+    if degree_id is not None:
+        join_degree = "JOIN DEGREE_COURSE dc ON dc.course_id = s.course_id"
+        conditions.append("dc.degree_id = %s")
+        params.append(degree_id)
 
     where_clause = " AND ".join(conditions)
     query = f"""
-            SELECT i.name AS instructor_name, c.course_id, c.course_number, c.name AS course_name, s.year, s.term AS semester, s.section_number 
-                FROM INSTRUCTOR i
-                JOIN SECTION s on i.instructor_id = s.instructor_id
-                JOIN COURSE c on s.course_id = c.course_id
-                WHERE {where_clause}
-                ORDER BY s.year DESC, FIELD(s.term, 'Spring', 'Summer', 'Fall') DESC, c.course_number, s.section_number;"""
+            SELECT 
+                s.section_id,
+                s.section_number,
+                s.term AS term,
+                s.year,
+                s.enrollment_count,
+                s.course_id,
+                c.course_number,
+                c.name AS course_name,
+                s.instructor_id,
+                i.name AS instructor_name
+            FROM SECTION s
+            JOIN COURSE c ON s.course_id = c.course_id
+            JOIN INSTRUCTOR i ON s.instructor_id = i.instructor_id
+            {join_degree}
+            WHERE {where_clause}
+            ORDER BY s.year DESC, FIELD(s.term, 'Spring', 'Summer', 'Fall') DESC, c.course_number, s.section_number;"""
     cur.execute(query, tuple(params))
     rows = cur.fetchall()
     cur.close()
@@ -256,7 +273,7 @@ def get_evaluations():
     cur.execute("""
         SELECT e.section_id, e.objective_id, e.degree_id,
                e.eval_method, e.count_A, e.count_B, e.count_C, e.count_F,
-               e.improvement_suggestion,
+               e.improvement_text,
                s.section_number, s.term AS semester, s.year,
                c.course_number, c.name as course_name,
                o.code as objective_code, o.title as objective_title,
