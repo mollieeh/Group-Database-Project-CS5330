@@ -363,24 +363,14 @@ def api_get_objectives_for_degree(degree_id):
         return jsonify({"error": str(e)}), 500
 
 
-#DEGREE SECTION QUERY ENDPOINT
-@app.get("/degree/<int:degree_id>/sections")
+# DEGREE SECTION QUERY ENDPOINT
+@app.get("/degrees/<int:degree_id>/sections")
 def api_get_sections_for_degree(degree_id):
     # Get query parameters
     start_year = request.args.get("start_year", type=int)
     start_term = request.args.get("start_term", type=str)
     end_year = request.args.get("end_year", type=int)
     end_term = request.args.get("end_term", type=str)
-
-    # Validate required params
-    missing = []
-    if start_year is None: missing.append("start_year")
-    if start_term is None: missing.append("start_term")
-    if end_year is None: missing.append("end_year")
-    if end_term is None: missing.append("end_term")
-
-    if missing:
-        return jsonify({"error": f"Missing parameters: {', '.join(missing)}"}), 400
 
     try:
         rows = repository.get_section_for_degree(
