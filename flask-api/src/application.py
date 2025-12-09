@@ -283,11 +283,11 @@ def evaluations():
     except (TypeError, ValueError):
         return jsonify({"error": "count values must be integers"}), 400
 
-    improvement_suggestion = data.get('improvement_suggestion')
+    improvement_text = data.get('improvement_text')
 
     created = repository.create_evaluation(
         section_id, objective_id, degree_id, eval_method,
-        count_A, count_B, count_C, count_F, improvement_suggestion
+        count_A, count_B, count_C, count_F, improvement_text
     )
     return jsonify(created), 201
 

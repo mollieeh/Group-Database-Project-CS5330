@@ -14,7 +14,7 @@ def get_degrees():
 
 # if degree id is provideded
 def get_degree_by_id(degree_id: int):
-    cur = cnx.cursor(dictionry=True)
+    cur = cnx.cursor(dictionary=True)
     cur.execute("SELECT degree_id, name, level FROM DEGREE WHERE degree_id = %s;", (degree_id,))
     rows = cur.fetchone()
     cur.close()
@@ -43,7 +43,7 @@ def get_course(coursename):
 
 def get_course_by_id(course_id: int):
     cur = cnx.cursor(dictionary=True)
-    cur.execute("SELECT course_id, course_number, name FROM COURSE WHERE id = %s;", (course_id,))
+    cur.execute("SELECT course_id, course_number, name FROM COURSE WHERE course_id = %s;", (course_id,))
     rows = cur.fetchone()
     cur.close()
     return rows
@@ -90,7 +90,7 @@ def get_instructors():
 
 def get_instructor_by_id(instructor_id: chr):
     cur = cnx.cursor(dictionary=True)
-    cur.execute("SELECT instructor_id, name FROM INSTRUCTOR WHERE instructor_id = %s;" (instructor_id,))
+    cur.execute("SELECT instructor_id, name FROM INSTRUCTOR WHERE instructor_id = %s;", (instructor_id,))
     rows = cur.fetchone()
     cur.close()
     return rows
@@ -249,11 +249,34 @@ def get_objective_by_title(title: str):
 # EVALUATIONS
 def create_evaluation(section_id: int, degree_id: int, objective_id: int, eval_method: str = None, count_A: int = 0, count_B: int = 0, count_C: int = 0, count_F: int = 0, improvement_text: str = None):
     cur = cnx.cursor()
-    cur.execute("""
-        INSERT INTO EVALUATION (section_id, degree_id, objective_id, eval_method, count_A, count_B, count_C, count_F, improvement_suggestion)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s);""", (section_id, degree_id, objective_id, eval_method, count_A, count_B, count_C, count_F, 
-                                                          improvement_text))
-    cnx.commit()
+    try:
+        # Ensure the degree/objective combo exists for FK constraint.
+        cur.execute(
+            """
+            INSERT INTO DEGREE_OBJECTIVE (degree_id, objective_id)
+            VALUES (%s, %s)
+            ON DUPLICATE KEY UPDATE objective_id = VALUES(objective_id);
+            """,
+            (degree_id, objective_id),
+        )
+
+        cur.execute("""
+            INSERT INTO EVALUATION (section_id, degree_id, objective_id, eval_method, count_A, count_B, count_C, count_F, improvement_text)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ON DUPLICATE KEY UPDATE
+                eval_method = VALUES(eval_method),
+                count_A = VALUES(count_A),
+                count_B = VALUES(count_B),
+                count_C = VALUES(count_C),
+                count_F = VALUES(count_F),
+                improvement_text = VALUES(improvement_text);
+            """, (section_id, degree_id, objective_id, eval_method, count_A, count_B, count_C, count_F,
+                                                              improvement_text))
+        cnx.commit()
+    except mysql.connector.Error:
+        cnx.rollback()
+        cur.close()
+        raise
     cur.close()
     return {
         "section_id": section_id,
