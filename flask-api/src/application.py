@@ -208,7 +208,9 @@ def sections():
     # if len(section_number) > 3:
     #     return jsonify({"error": "section_number must be 3 digits or less"}), 400
 
-    enrollment = data.get('enrollment', 0)
+    enrollment = data.get('enrollment')
+    if enrollment is None:
+        enrollment = data.get('enrollment_count', 0)
     instructor_id = data.get('instructor_id')
 
     try:

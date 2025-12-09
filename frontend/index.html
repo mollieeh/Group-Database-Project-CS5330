@@ -178,6 +178,7 @@
           <div>
             <p class="eyebrow">Section</p>
             <h3>Schedule section</h3>
+            <div id="section-message" class="badge badge--muted" role="status">Awaiting entry…</div>
           </div>
         </div>
         <form id="section-form" class="stack" data-endpoint="/sections" data-method="POST">
@@ -255,8 +256,10 @@
       </div>
       <form id="evaluation-form" class="stack" data-endpoint="/evaluations" data-method="POST">
         <div class="inline">
-          <label class="label">Degree ID
-            <input name="degree_id" type="number" min="1" required placeholder="1">
+          <label class="label">Degree
+            <select id="evaluation-degree-select" name="degree_id" required>
+              <option value="">Select a degree</option>
+            </select>
           </label>
           <label class="label">Section ID
             <input name="section_id" type="number" min="1" required placeholder="5001">

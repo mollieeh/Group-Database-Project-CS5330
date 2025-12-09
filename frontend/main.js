@@ -7,6 +7,7 @@ const courseMessageEl = document.getElementById("course-message");
 const instructorMessageEl = document.getElementById("instructor-message");
 const objectiveMessageEl = document.getElementById("objective-message");
 const assocMessageEl = document.getElementById("assoc-message");
+const sectionMessageEl = document.getElementById("section-message");
 const logEl = document.getElementById("log");
 const evaluationPreviewEl = document.getElementById("evaluation-preview");
 const queryResultsEl = document.getElementById("query-results");
@@ -19,6 +20,7 @@ const assocDegreeSelect = document.getElementById("assoc-degree-select");
 const assocCourseSelect = document.getElementById("assoc-course-select");
 const assocObjectiveSelect = document.getElementById("assoc-objective-select");
 const assocDegreeCoreCheckbox = document.getElementById("assoc-degree-core");
+const evalDegreeSelect = document.getElementById("evaluation-degree-select");
 
 const state = {
   apiBase: apiInput.value.trim(),
@@ -138,6 +140,9 @@ function bindForms() {
         if (endpoint === "/course-objectives" && payload.degree_id) {
           fetchDegreeCourses(payload.degree_id);
         }
+        if (endpoint === "/sections") {
+          setSectionMessage("Section saved.", "success");
+        }
       } else {
         if (endpoint === "/degrees" && result.status === 409) {
           setDegreeMessage("Degree already exists for that name and level.", "error");
@@ -162,6 +167,9 @@ function bindForms() {
           log("Objective already exists.");
         } else if (endpoint === "/objectives") {
           setObjectiveMessage("Could not save objective. Please try again.", "error");
+        }
+        if (endpoint === "/sections") {
+          setSectionMessage("Could not save section.", "error");
         }
         log(`Failed to reach ${endpoint}: ${result.error || result.status}`);
       }
@@ -473,6 +481,14 @@ function setAssociationMessage(text, tone = "muted") {
   assocMessageEl.className = `badge ${toneClass}`;
 }
 
+function setSectionMessage(text, tone = "muted") {
+  if (!sectionMessageEl) return;
+  const toneClass =
+    tone === "success" ? "badge--success" : tone === "error" ? "badge--error" : "badge--muted";
+  sectionMessageEl.textContent = text;
+  sectionMessageEl.className = `badge ${toneClass}`;
+}
+
 function duplicateEvaluation() {
   const form = document.getElementById("evaluation-form");
   const degreeId = form.elements.degree_id.value;
@@ -713,6 +729,10 @@ function populateAssocDegrees() {
     option.textContent = `${deg.degree_id ?? deg.id}: ${deg.name || "Degree"} (${deg.level || ""})`.trim();
     assocDegreeSelect.appendChild(option);
   });
+
+  if (evalDegreeSelect) {
+    evalDegreeSelect.innerHTML = assocDegreeSelect.innerHTML;
+  }
 }
 
 function populateAssocObjectiveDegrees() {
