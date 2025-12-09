@@ -322,7 +322,13 @@ def get_courses_associated_with_degree(degree_id: int):
     return rows
 
 # Given a degree: List all sections that are being offered (in chronological order, where user can supply the time range)
-def get_section_for_degree(degree_id: int, start_year: int, start_term: str, end_year: int, end_term: str):
+def get_section_for_degree(degree_id: int, start_year: int = None, start_term: str = None, end_year: int = None, end_term: str = None):
+    # Default to an open range if bounds are not provided so the frontend can omit filters.
+    start_year = start_year if start_year is not None else 0
+    end_year = end_year if end_year is not None else 9999
+    start_term = start_term if start_term is not None else "Spring"
+    end_term = end_term if end_term is not None else "Fall"
+
     cur = cnx.cursor(dictionary=True)
     cur.execute("""
         SELECT 
@@ -334,10 +340,12 @@ def get_section_for_degree(degree_id: int, start_year: int, start_term: str, end
             s.term,
             s.section_number,
             s.instructor_id,
+            i.name AS instructor_name,
             s.enrollment_count
         FROM SECTION s
         JOIN COURSE c ON c.course_id = s.course_id
         JOIN DEGREE_COURSE dc ON dc.course_id = s.course_id
+        LEFT JOIN INSTRUCTOR i ON i.instructor_id = s.instructor_id
         WHERE dc.degree_id = %s
           AND (
                 (s.year > %s) OR
