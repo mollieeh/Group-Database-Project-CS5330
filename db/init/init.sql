@@ -34,7 +34,7 @@ CREATE TABLE OBJECTIVE (
     title        VARCHAR(120)  NOT NULL,
     description  TEXT          NOT NULL,
     UNIQUE KEY uq_objective_code  (code),
-    UNIQUE KEY uq_objective_title (title) -- potentially remove unique title to avoid catching very similiar titles
+    UNIQUE KEY uq_objective_title (title)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 
