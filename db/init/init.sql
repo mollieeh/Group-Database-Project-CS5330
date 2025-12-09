@@ -1,7 +1,7 @@
 CREATE TABLE DEGREE (
     degree_id INT AUTO_INCREMENT PRIMARY KEY,
     name      VARCHAR(100) NOT NULL,
-    level     VARCHAR(10)  NOT NULL, --ENUM instead?
+    level     VARCHAR(10)  NOT NULL, -- ENUM instead?
     UNIQUE KEY uq_degree_name_level (name, level)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -34,7 +34,7 @@ CREATE TABLE OBJECTIVE (
     title        VARCHAR(120)  NOT NULL,
     description  TEXT          NOT NULL,
     UNIQUE KEY uq_objective_code  (code),
-    UNIQUE KEY uq_objective_title (title) --potentially remove unique title to avoid catching very similiar titles
+    UNIQUE KEY uq_objective_title (title) -- potentially remove unique title to avoid catching very similiar titles
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 
@@ -106,7 +106,7 @@ CREATE TABLE EVALUATION (
     section_id   INT NOT NULL,
     degree_id    INT NOT NULL,
     objective_id INT NOT NULL,
-    --course_id     INT NOT NULL,  
+    -- course_id     INT NOT NULL,  
     eval_method  VARCHAR(50) NOT NULL,
     count_A      INT UNSIGNED NOT NULL DEFAULT 0,
     count_B      INT UNSIGNED NOT NULL DEFAULT 0,
@@ -122,7 +122,7 @@ CREATE TABLE EVALUATION (
         ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT fk_eval_objective
         FOREIGN KEY (degree_id, objective_id) REFERENCES DEGREE_OBJECTIVE(degree_id, objective_id)
-        ON DELETE CASCADE ON UPDATE CASCADE,
+        ON DELETE CASCADE ON UPDATE CASCADE
    -- CONSTRAINT fk_eval_course
    --    FOREIGN KEY (course_id)
    --     REFERENCES COURSE(course_id)
