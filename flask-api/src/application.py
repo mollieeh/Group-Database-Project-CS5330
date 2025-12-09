@@ -1,4 +1,5 @@
 from flask import Flask, jsonify, request, flash
+import mysql.connector
 import repository
 
 app = Flask(__name__)
@@ -31,7 +32,11 @@ def get_degrees():
     if not degree_name or not degree_level:
         return jsonify({"error": "Both name and level are required"}), 400
 
-    created = repository.create_degree(degree_name, degree_level)
+    try:
+        created = repository.create_degree(degree_name, degree_level)
+    except mysql.connector.IntegrityError:
+        return jsonify({"error": "Degree already exists"}), 409
+
     return jsonify(created), 201
 
     # getting degree by id
@@ -73,7 +78,11 @@ def courses():
     if not course_number or not course_name:
         return jsonify({"error": "Both course_number and name are required"}), 400
 
-    created = repository.create_course(course_number, course_name)
+    try:
+        created = repository.create_course(course_number, course_name)
+    except mysql.connector.IntegrityError:
+        return jsonify({"error": "Course already exists"}), 409
+
     return jsonify(created), 201
 
 @app.route("/courses/<int:course_id>", methods=['GET'])
@@ -111,7 +120,11 @@ def instructors():
     if len(instructor_id) != 8 or not instructor_id.isnumeric():
         return jsonify({"error": "invalid instructor id (must be an 8 digit number)"}), 400
 
-    created = repository.create_instructor(instructor_id, name)
+    try:
+        created = repository.create_instructor(instructor_id, name)
+    except mysql.connector.IntegrityError:
+        return jsonify({"error": "Instructor already exists"}), 409
+
     return jsonify(created), 201
     
 @app.route("/instructors/<instructor_id>", methods=['GET'])
@@ -140,7 +153,18 @@ def objectives():
     if len(title) > 120:
         return jsonify({"error": "title must be 120 characters or less"}), 400
 
-    created = repository.create_objective(code, title, description)
+    try:
+        created = repository.create_objective(code, title, description)
+    except mysql.connector.IntegrityError:
+        # Determine which unique constraint failed
+        if repository.get_objective_by_code(code):
+            return jsonify({"error": "Objective code must be unique"}), 409
+        if repository.get_objective_by_title(title):
+            return jsonify({"error": "Objective title must be unique"}), 409
+        return jsonify({"error": "Objective must have unique code and title"}), 409
+    except Exception:
+        return jsonify({"error": "Objective could not be created"}), 500
+
     return jsonify(created), 201
 
 @app.route("/objectives/<int:objective_id>", methods=['GET'])
@@ -170,25 +194,23 @@ def sections():
     except (TypeError, ValueError):
         return jsonify({"error": "course_id is required"}), 400
 
-    section_number = (data.get('section_number') or "").strip()
-    semester = (data.get('semester') or "").strip()
+    section_number = str(data.get('section_number') or "") # .strip()
+    semester = (data.get('semester') or data.get('term') or "").strip()
 
     try:
         year = int(data.get('year'))
     except (TypeError, ValueError):
         return jsonify({"error": "year is required"}), 400
 
-    if not section_number or not semester:
-        return jsonify({"error": "section_number and semester are required"}), 400
+    # if not section_number or not semester:
+    #     return jsonify({"error": "section_number and semester are required"}), 400
 
-    valid_semesters = ['Spring', 'Summer', 'Fall']
-    if semester not in valid_semesters:
-        return jsonify({"error": f"semester must be one of: {', '.join(valid_semesters)}"}), 400
+    # if len(section_number) > 3:
+    #     return jsonify({"error": "section_number must be 3 digits or less"}), 400
 
-    if len(section_number) > 3:
-        return jsonify({"error": "section_number must be 3 digits or less"}), 400
-
-    enrollment = data.get('enrollment', 0)
+    enrollment = data.get('enrollment')
+    if enrollment is None:
+        enrollment = data.get('enrollment_count', 0)
     instructor_id = data.get('instructor_id')
 
     try:
@@ -223,11 +245,15 @@ def course_sections(course_id: int):
         # list all sections taught by an instructor for range of semesters
 @app.route("/instructors/<instructor_id>/sections", methods=['GET'])
 def instructor_sections(instructor_id: str):
-    start_year = request.args.get('start_year', type=int)
-    end_year = request.args.get('end_year', type=int)
+    year = request.args.get('year', type=int)
+    term = request.args.get('term')
+    degree_id = request.args.get('degree_id', type=int)
+
+    if year is None or not term:
+        return jsonify({"error": "year and term are required"}), 400
 
     sections = repository.get_section_by_instructor(
-        instructor_id, start_year, end_year
+        instructor_id, year, term, degree_id
     )
     return jsonify(sections)
 
@@ -257,12 +283,18 @@ def evaluations():
     except (TypeError, ValueError):
         return jsonify({"error": "count values must be integers"}), 400
 
-    improvement_suggestion = data.get('improvement_suggestion')
+    improvement_text = data.get('improvement_text')
 
-    created = repository.create_evaluation(
-        section_id, objective_id, degree_id, eval_method,
-        count_A, count_B, count_C, count_F, improvement_suggestion
-    )
+    try:
+        created = repository.create_evaluation(
+            section_id, degree_id, objective_id, eval_method,
+            count_A, count_B, count_C, count_F, improvement_text
+        )
+    except ValueError as ve:
+        return jsonify({"error": str(ve)}), 400
+    except mysql.connector.IntegrityError as ie:
+        return jsonify({"error": str(ie)}), 409
+
     return jsonify(created), 201
 
 
@@ -305,5 +337,104 @@ def course_objectives():
     return jsonify({"degree_course": dc_link, "course_objective": co_link}), 201
 
 
+# # INSTRUCTOR SECTIONS QUERY ENDPOINT
+# @app.get("/instructors/<instructor_id>/sections")
+# def api_get_sections_by_instructor(instructor_id):
+#     # Optional query parameters for semester range
+#     start_year = request.args.get("start_year", type=int)
+#     end_year = request.args.get("end_year", type=int)
+
+#     try:
+#         rows = repository.get_section_by_instructor(instructor_id, start_year, end_year)
+#         return jsonify(rows)
+#     except Exception as e:
+#         return jsonify({"error": str(e)}), 500
+    
+# COURSE SECTIONS QUERY ENDPOINT
+@app.get("/courses/<int:course_id>/sections")
+def api_get_sections_by_course(course_id):
+    # Optional query parameters for semester range
+    start_year = request.args.get("start_year", type=int)
+    end_year = request.args.get("end_year", type=int)
+
+    try:
+        rows = repository.get_section_by_course(course_id, start_year, end_year)
+        return jsonify(rows)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+# DEGREE OBJECTIVES QUERY ENDPOINT
+@app.get("/degrees/<int:degree_id>/objectives")
+def api_get_objectives_for_degree(degree_id):
+    try:
+        rows = repository.get_objectives_for_degree(degree_id)
+        return jsonify(rows), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+#DEGREE SECTION QUERY ENDPOINT
+@app.get("/degree/<int:degree_id>/sections")
+def api_get_sections_for_degree(degree_id):
+    # Get query parameters
+    start_year = request.args.get("start_year", type=int)
+    start_term = request.args.get("start_term", type=str)
+    end_year = request.args.get("end_year", type=int)
+    end_term = request.args.get("end_term", type=str)
+
+    # Validate required params
+    missing = []
+    if start_year is None: missing.append("start_year")
+    if start_term is None: missing.append("start_term")
+    if end_year is None: missing.append("end_year")
+    if end_term is None: missing.append("end_term")
+
+    if missing:
+        return jsonify({"error": f"Missing parameters: {', '.join(missing)}"}), 400
+
+    try:
+        rows = repository.get_section_for_degree(
+            degree_id, start_year, start_term, end_year, end_term
+        )
+        return jsonify(rows), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+#COURSE OBJECTIVE ASSOSIATION QUERY
+@app.get("/degree/<int:degree_id>/objectives/courses")
+def api_get_courses_for_objectives(degree_id):
+    try:
+        rows = repository.get_courses_for_objective(degree_id)
+        return jsonify(rows)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# SECTIONS BY SEMESTER ENDPOINT
+@app.get("/sections/<term>/<int:year>")
+def api_get_sections_by_semester(term, year):
+    try:
+        rows = repository.get_sections_by_semester(term, year)
+        return jsonify(rows)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 # if __name__ == "__main__":
-#     app.run(debug=True, port=5000)
+#     app.run(threaded=False, processes=1, debug=True)
+
+# SECTION SUCCESS RATE QUERY
+@app.get("/sections/<term>/<int:year>/success")
+def api_get_sections_success_rate(term, year):
+    percentage = request.args.get("percentage", type=float)
+    if percentage is None:
+        return jsonify({"error": "Missing query parameter: percentage"}), 400
+
+    try:
+        rows = repository.get_sections_fulfill_success_rate(term, year, percentage)
+        return jsonify(rows)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+if __name__ == "__main__":
+    app.run(threaded=False, processes=1, debug=True)
+

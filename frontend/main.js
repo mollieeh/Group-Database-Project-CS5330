@@ -2,23 +2,55 @@ const apiInput = document.getElementById("api-base");
 const apiStatusEl = document.getElementById("api-status");
 const degreeListEl = document.getElementById("degree-list");
 const degreeCountEl = document.getElementById("degree-count");
+const degreeMessageEl = document.getElementById("degree-message");
+const courseMessageEl = document.getElementById("course-message");
+const instructorMessageEl = document.getElementById("instructor-message");
+const objectiveMessageEl = document.getElementById("objective-message");
+const assocMessageEl = document.getElementById("assoc-message");
+const sectionMessageEl = document.getElementById("section-message");
 const logEl = document.getElementById("log");
 const evaluationPreviewEl = document.getElementById("evaluation-preview");
 const queryResultsEl = document.getElementById("query-results");
+const queryDegreeSelect = document.getElementById("query-degree-select");
 const objectiveListEl = document.getElementById("objective-list");
 const degreeCourseListEl = document.getElementById("degree-course-list");
+const sectionInstructorSelect = document.getElementById("section-instructor-select");
+const sectionCourseSelect = document.getElementById("section-course-select");
+const assocDegreeSelect = document.getElementById("assoc-degree-select");
+const assocCourseSelect = document.getElementById("assoc-course-select");
+const assocObjectiveSelect = document.getElementById("assoc-objective-select");
+const assocDegreeCoreCheckbox = document.getElementById("assoc-degree-core");
+const evalDegreeSelect = document.getElementById("evaluation-degree-select");
+const evalInstructorSelect = document.getElementById("evaluation-instructor-select");
+const evalYearSelect = document.getElementById("evaluation-year-select");
+const listInstructorSectionsBtn = document.getElementById("list-instructor-sections");
+const instructorSectionsResultEl = document.getElementById("instructor-sections-result");
+const evaluationDetailsEl = document.getElementById("evaluation-details");
+const evaluationSectionInfoEl = document.getElementById("evaluation-section-info");
+const evaluationSectionIdInput = document.getElementById("evaluation-section-id");
+const evaluationObjectiveSelect = document.getElementById("evaluation-objective-select");
 
 const state = {
   apiBase: apiInput.value.trim(),
   degrees: [],
   objectives: [],
   degreeCourses: [],
+  instructors: [],
+  courses: [],
   recentEvaluations: [],
   sample: {
     degrees: [
       { degree_id: 1, name: "Computer Science", level: "BS" },
       { degree_id: 2, name: "Data Science", level: "MS" },
       { degree_id: 3, name: "Cybersecurity", level: "Cert" }
+    ],
+    courses: [
+      { course_id: 101, course_number: "CSCI101", name: "Intro to CS" },
+      { course_id: 201, course_number: "CSCI201", name: "Data Structures" }
+    ],
+    instructors: [
+      { instructor_id: "90012345", name: "Ada Lovelace" },
+      { instructor_id: "90054321", name: "Alan Turing" }
     ],
     objectives: [
       { objective_id: 1, code: "LO1", title: "Programming Fundamentals" },
@@ -38,6 +70,7 @@ document.getElementById("refresh-degrees").addEventListener("click", fetchDegree
 document.getElementById("reload-degrees").addEventListener("click", fetchDegrees);
 document.getElementById("reload-objectives").addEventListener("click", fetchObjectives);
 document.getElementById("duplicate-eval").addEventListener("click", duplicateEvaluation);
+document.getElementById("list-instructor-sections")?.addEventListener("click", listInstructorSections);
 
 function init() {
   const storedBase = localStorage.getItem("apiBase");
@@ -54,8 +87,20 @@ function init() {
 
   bindForms();
   fetchDegrees();
+  fetchCourses();
+  fetchInstructors();
   fetchObjectives();
+  populateEvalYears();
+  populateAssocDropdowns();
   renderEvaluationPreview();
+
+  if (evaluationDetailsEl) {
+    evaluationDetailsEl.style.display = "none";
+  }
+
+  if (queryDegreeSelect) {
+    populateQueryDegrees();
+  }
 }
 
 function bindForms() {
@@ -73,7 +118,8 @@ function bindForms() {
       }
 
       if (form.id === "association-form") {
-        payload.is_core = form.querySelector('input[name="is_core"]').checked ? 1 : 0;
+        await linkCourseObjectiveSubmit(event);
+        return;
       }
 
       const result = await apiRequest(endpoint, {
@@ -86,10 +132,20 @@ function bindForms() {
         log(`Saved via ${method} ${endpoint}`);
         form.reset();
         if (endpoint === "/degrees") {
+          setDegreeMessage(`Saved "${payload.name}" (${payload.level})`, "success");
           fetchDegrees();
         }
+        if (endpoint === "/courses") {
+          setCourseMessage(`Saved course "${payload.name}" (${payload.course_number})`, "success");
+          fetchCourses();
+        }
+        if (endpoint === "/instructors") {
+          setInstructorMessage(`Saved instructor "${payload.name}" (${payload.instructor_id})`, "success");
+        }
         if (endpoint === "/objectives") {
+          setObjectiveMessage(`Saved objective "${payload.title}" (${payload.code})`, "success");
           fetchObjectives();
+          populateAssocObjectives();
         }
         if (endpoint === "/evaluations") {
           state.recentEvaluations.unshift(payload);
@@ -98,7 +154,37 @@ function bindForms() {
         if (endpoint === "/course-objectives" && payload.degree_id) {
           fetchDegreeCourses(payload.degree_id);
         }
+        if (endpoint === "/sections") {
+          setSectionMessage("Section saved.", "success");
+        }
       } else {
+        if (endpoint === "/degrees" && result.status === 409) {
+          setDegreeMessage("Degree already exists for that name and level.", "error");
+          log("Degree already exists.");
+        } else if (endpoint === "/degrees") {
+          setDegreeMessage("Could not save degree. Please try again.", "error");
+        }
+        if (endpoint === "/courses" && result.status === 409) {
+          setCourseMessage("Course already exists (number or name).", "error");
+          log("Course already exists.");
+        } else if (endpoint === "/courses") {
+          setCourseMessage("Could not save course. Please try again.", "error");
+        }
+        if (endpoint === "/instructors" && result.status === 409) {
+          setInstructorMessage("Instructor already exists.", "error");
+          log("Instructor already exists.");
+        } else if (endpoint === "/instructors") {
+          setInstructorMessage("Could not save instructor. Please try again.", "error");
+        }
+        if (endpoint === "/objectives" && result.status === 409) {
+          setObjectiveMessage(result.error || "Objective code/title must be unique.", "error");
+          log("Objective already exists.");
+        } else if (endpoint === "/objectives") {
+          setObjectiveMessage("Could not save objective. Please try again.", "error");
+        }
+        if (endpoint === "/sections") {
+          setSectionMessage("Could not save section.", "error");
+        }
         log(`Failed to reach ${endpoint}: ${result.error || result.status}`);
       }
     });
@@ -142,6 +228,76 @@ async function fetchDegrees() {
   state.degrees = degrees;
   renderDegrees(degrees);
   setApiStatus(`Loaded ${degrees.length} item(s)`, false);
+  populateAssocDegrees();
+  populateAssocObjectiveDegrees();
+  populateQueryDegrees();
+}
+
+async function fetchCourses() {
+  const response = await apiRequest("/courses");
+  let courses = [];
+
+  if (response.ok && Array.isArray(response.data)) {
+    courses = response.data;
+  } else if (response.ok && Array.isArray(response.data?.courses)) {
+    courses = response.data.courses;
+  } else {
+    courses = state.sample.courses;
+    log("Using sample courses. Start the API to see live data.");
+  }
+
+  state.courses = courses;
+  renderSectionCourseOptions(courses);
+  populateAssocCourses();
+}
+
+async function fetchInstructors() {
+  const response = await apiRequest("/instructors");
+  let instructors = [];
+
+  if (response.ok && Array.isArray(response.data)) {
+    instructors = response.data;
+  } else if (response.ok && Array.isArray(response.data?.instructors)) {
+    instructors = response.data.instructors;
+  } else {
+    instructors = state.sample.instructors;
+    log("Using sample instructors. Start the API to see live data.");
+  }
+
+  state.instructors = instructors;
+  renderSectionInstructorOptions(instructors);
+  populateEvalInstructors(instructors);
+}
+
+async function populateEvalYears() {
+  if (!evalYearSelect) return;
+  const response = await apiRequest("/sections");
+  let years = [];
+  if (response.ok && Array.isArray(response.data)) {
+    years = Array.from(
+      new Set(
+        response.data
+          .map((s) => Number(s.year))
+          .filter((y) => Number.isInteger(y))
+      )
+    ).sort((a, b) => b - a);
+  }
+  if (!years.length) {
+    years = [new Date().getFullYear()];
+  }
+  evalYearSelect.innerHTML = "";
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "Select year";
+  placeholder.disabled = true;
+  placeholder.selected = true;
+  evalYearSelect.appendChild(placeholder);
+  years.forEach((y) => {
+    const option = document.createElement("option");
+    option.value = y;
+    option.textContent = y;
+    evalYearSelect.appendChild(option);
+  });
 }
 
 function normalizeDegree(degree) {
@@ -167,6 +323,9 @@ async function fetchObjectives() {
 
   state.objectives = objectives;
   renderObjectives(objectives);
+  populateAssocObjectives();
+  populateEvaluationObjectives();
+  setAssociationMessage("Awaiting association…", "muted");
 }
 
 function renderObjectives(objectives) {
@@ -329,6 +488,54 @@ function setApiStatus(text, isError = false) {
   apiStatusEl.className = `badge ${isError ? "" : "badge--muted"}`;
 }
 
+function setDegreeMessage(text, tone = "muted") {
+  if (!degreeMessageEl) return;
+  const toneClass =
+    tone === "success" ? "badge--success" : tone === "error" ? "badge--error" : "badge--muted";
+  degreeMessageEl.textContent = text;
+  degreeMessageEl.className = `badge ${toneClass}`;
+}
+
+function setCourseMessage(text, tone = "muted") {
+  if (!courseMessageEl) return;
+  const toneClass =
+    tone === "success" ? "badge--success" : tone === "error" ? "badge--error" : "badge--muted";
+  courseMessageEl.textContent = text;
+  courseMessageEl.className = `badge ${toneClass}`;
+}
+
+function setInstructorMessage(text, tone = "muted") {
+  if (!instructorMessageEl) return;
+  const toneClass =
+    tone === "success" ? "badge--success" : tone === "error" ? "badge--error" : "badge--muted";
+  instructorMessageEl.textContent = text;
+  instructorMessageEl.className = `badge ${toneClass}`;
+}
+
+function setObjectiveMessage(text, tone = "muted") {
+  if (!objectiveMessageEl) return;
+  const toneClass =
+    tone === "success" ? "badge--success" : tone === "error" ? "badge--error" : "badge--muted";
+  objectiveMessageEl.textContent = text;
+  objectiveMessageEl.className = `badge ${toneClass}`;
+}
+
+function setAssociationMessage(text, tone = "muted") {
+  if (!assocMessageEl) return;
+  const toneClass =
+    tone === "success" ? "badge--success" : tone === "error" ? "badge--error" : "badge--muted";
+  assocMessageEl.textContent = text;
+  assocMessageEl.className = `badge ${toneClass}`;
+}
+
+function setSectionMessage(text, tone = "muted") {
+  if (!sectionMessageEl) return;
+  const toneClass =
+    tone === "success" ? "badge--success" : tone === "error" ? "badge--error" : "badge--muted";
+  sectionMessageEl.textContent = text;
+  sectionMessageEl.className = `badge ${toneClass}`;
+}
+
 function duplicateEvaluation() {
   const form = document.getElementById("evaluation-form");
   const degreeId = form.elements.degree_id.value;
@@ -373,6 +580,33 @@ function renderEvaluationPreview() {
 
 async function runQuery(form) {
   const endpoint = form.dataset.endpoint || "/";
+  if (form.id === "degree-query-form") {
+    const degreeId = queryDegreeSelect?.value;
+    if (!degreeId) {
+      setApiStatus("Select a degree to view courses.", true);
+      return;
+    }
+    const coursePath = `/degrees/${degreeId}/courses`;
+    const objectivesPath = `/degrees/${degreeId}/objectives`;
+
+    const [courseRes, objectiveRes, sectionsRes] = await Promise.all([
+      apiRequest(coursePath, { method: "GET" }),
+      apiRequest(objectivesPath, { method: "GET" }),
+      apiRequest("/sections", { method: "GET" }),
+    ]);
+
+    const courses = courseRes.ok && Array.isArray(courseRes.data) ? courseRes.data : [];
+    const objectives = objectiveRes.ok && Array.isArray(objectiveRes.data) ? objectiveRes.data : [];
+
+    let sections = sectionsRes.ok && Array.isArray(sectionsRes.data) ? sectionsRes.data : [];
+    const courseIds = new Set(courses.map((c) => c.course_id));
+    sections = sections.filter((s) => courseIds.has(s.course_id));
+
+    renderDegreeQueryResults(degreeId, courses, objectives, sections);
+    log(`Query success: courses/objectives/sections for degree ${degreeId}`);
+    return;
+  }
+
   const payload = serializeForm(form);
   const params = new URLSearchParams();
   Object.entries(payload).forEach(([key, value]) => {
@@ -390,32 +624,338 @@ async function runQuery(form) {
   }
 }
 
-function renderQueryResults(results) {
-  if (!results || (Array.isArray(results) && results.length === 0)) {
-    queryResultsEl.innerHTML = `<div class="empty">No results yet.</div>`;
+function renderDegreeQueryResults(degreeId, courses, objectives, sections) {
+  const fragment = document.createDocumentFragment();
+
+  const courseTitle = document.createElement("div");
+  courseTitle.className = "subhead";
+  courseTitle.textContent = `Courses for degree ${degreeId}:`;
+  fragment.appendChild(courseTitle);
+
+  if (!courses.length) {
+    const empty = document.createElement("div");
+    empty.className = "empty";
+    empty.textContent = "No courses found.";
+    fragment.appendChild(empty);
+  } else {
+    courses.forEach((c) => {
+      const card = document.createElement("div");
+      card.className = "card";
+      const title = document.createElement("div");
+      title.className = "card__title";
+      title.textContent = `${c.course_number || ""} — ${c.course_name || c.name || "Course"}`;
+      card.appendChild(title);
+      const meta = document.createElement("div");
+      meta.className = "card__meta";
+      meta.textContent = `ID: ${c.course_id ?? ""} • Type: ${
+        c.course_type || (c.is_core ? "Core" : "Elective")
+      }`;
+      card.appendChild(meta);
+      fragment.appendChild(card);
+    });
+  }
+
+  const objTitle = document.createElement("div");
+  objTitle.className = "subhead";
+  objTitle.textContent = "Objectives:";
+  fragment.appendChild(objTitle);
+  if (!objectives.length) {
+    const empty = document.createElement("div");
+    empty.className = "empty";
+    empty.textContent = "No objectives found.";
+    fragment.appendChild(empty);
+  } else {
+    objectives.forEach((o) => {
+      const card = document.createElement("div");
+      card.className = "card";
+      const title = document.createElement("div");
+      title.className = "card__title";
+      title.textContent = `${o.code || ""} — ${o.title || "Objective"}`;
+      card.appendChild(title);
+      const meta = document.createElement("div");
+      meta.className = "card__meta";
+      meta.textContent = o.description || "";
+      card.appendChild(meta);
+      fragment.appendChild(card);
+    });
+  }
+
+  const secTitle = document.createElement("div");
+  secTitle.className = "subhead";
+  secTitle.textContent = "Sections (filtered to this degree's courses):";
+  fragment.appendChild(secTitle);
+
+  if (!sections.length) {
+    const empty = document.createElement("div");
+    empty.className = "empty";
+    empty.textContent = "No sections found.";
+    fragment.appendChild(empty);
+  } else {
+    const ordered = sections.slice().sort((a, b) => {
+      const termOrder = { Spring: 1, Summer: 2, Fall: 3 };
+      if (b.year !== a.year) return b.year - a.year;
+      return (termOrder[b.term || b.semester] || 0) - (termOrder[a.term || a.semester] || 0);
+    });
+    ordered.forEach((s) => {
+      const card = document.createElement("div");
+      card.className = "card";
+      const title = document.createElement("div");
+      title.className = "card__title";
+      title.textContent = `Section ${s.section_number || ""} — ${s.semester || s.term || ""} ${s.year || ""}`;
+      card.appendChild(title);
+      const meta = document.createElement("div");
+      meta.className = "card__meta";
+      meta.textContent = `Course ID: ${s.course_id ?? ""} • Instructor: ${s.instructor_name || s.instructor_id || ""} • Enrollment: ${s.enrollment_count || s.enrollment || ""}`;
+      card.appendChild(meta);
+      fragment.appendChild(card);
+    });
+  }
+
+  queryResultsEl.innerHTML = "";
+  queryResultsEl.appendChild(fragment);
+}
+
+function renderSectionCourseOptions(courses = []) {
+  if (!sectionCourseSelect) return;
+  sectionCourseSelect.innerHTML = "";
+
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "Select a course";
+  placeholder.disabled = true;
+  placeholder.selected = true;
+  sectionCourseSelect.appendChild(placeholder);
+
+  courses.forEach((course) => {
+    const option = document.createElement("option");
+    option.value = course.course_id;
+    option.textContent = `${course.course_number || ""} — ${course.name || "Course"}`.trim();
+    sectionCourseSelect.appendChild(option);
+  });
+}
+
+function renderSectionInstructorOptions(instructors = []) {
+  if (!sectionInstructorSelect) return;
+  sectionInstructorSelect.innerHTML = "";
+
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "Select an instructor";
+  placeholder.disabled = true;
+  placeholder.selected = true;
+  sectionInstructorSelect.appendChild(placeholder);
+
+  instructors.forEach((inst) => {
+    const option = document.createElement("option");
+    option.value = inst.instructor_id;
+    option.textContent = `${inst.instructor_id || ""} — ${inst.name || "Instructor"}`.trim();
+    sectionInstructorSelect.appendChild(option);
+  });
+}
+
+function populateEvalInstructors(instructors = []) {
+  if (!evalInstructorSelect) return;
+  evalInstructorSelect.innerHTML = "";
+
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "Select an instructor";
+  placeholder.disabled = true;
+  placeholder.selected = true;
+  evalInstructorSelect.appendChild(placeholder);
+
+  instructors.forEach((inst) => {
+    const option = document.createElement("option");
+    option.value = inst.instructor_id;
+    option.textContent = `${inst.instructor_id || ""} — ${inst.name || "Instructor"}`.trim();
+    evalInstructorSelect.appendChild(option);
+  });
+}
+
+async function listInstructorSections() {
+  const instructorId = evalInstructorSelect?.value;
+  const term = document.querySelector('#evaluation-form select[name="term"]')?.value;
+  const year = evalYearSelect?.value;
+  const degreeId = evalDegreeSelect?.value;
+
+  if (!instructorId || !term || !year || !degreeId) {
+    setApiStatus("Select degree, instructor, and semester to list sections.", true);
     return;
   }
 
-  const normalized = Array.isArray(results) ? results : [results];
-  const fragment = document.createDocumentFragment();
-  normalized.slice(0, 12).forEach((item, idx) => {
-    const card = document.createElement("div");
-    card.className = "card";
-    const title = document.createElement("div");
-    title.className = "card__title";
-    title.textContent = item.name || item.title || `Result ${idx + 1}`;
-    card.appendChild(title);
+  const sectionRes = await apiRequest(
+    `/instructors/${instructorId}/sections?year=${year}&term=${encodeURIComponent(term)}&degree_id=${degreeId}`,
+    { method: "GET" }
+  );
 
-    const meta = document.createElement("div");
-    meta.className = "card__meta";
-    meta.textContent = Object.entries(item)
-      .map(([k, v]) => `${k}: ${v}`)
-      .join(" • ");
-    card.appendChild(meta);
-    fragment.appendChild(card);
+  const sections = sectionRes.ok && Array.isArray(sectionRes.data) ? sectionRes.data : [];
+
+  renderSectionsList(
+    sections,
+    `Sections for ${instructorId} in ${term} ${year}`,
+    instructorSectionsResultEl,
+    (section) => {
+      if (section && section.section_id) {
+        showEvaluationDetails(section);
+      }
+    }
+  );
+  if (evaluationDetailsEl) {
+    evaluationDetailsEl.style.display = "none";
+  }
+  if (evaluationSectionInfoEl) {
+    evaluationSectionInfoEl.textContent = sections.length
+      ? "Select a section to continue."
+      : "No sections returned.";
+  }
+  if (sections.length) {
+    setApiStatus("Loaded sections.", false);
+  } else {
+    setApiStatus("No sections match for that instructor/semester/degree.", true);
+  }
+  log(`Listed sections for instructor ${instructorId}`);
+}
+
+function populateAssocDropdowns() {
+  populateAssocDegrees();
+  populateAssocObjectiveDegrees();
+  populateAssocCourses();
+  populateAssocObjectives();
+}
+
+function populateAssocDegrees() {
+  if (!assocDegreeSelect) return;
+  assocDegreeSelect.innerHTML = "";
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "Select a degree";
+  placeholder.disabled = true;
+  placeholder.selected = true;
+  assocDegreeSelect.appendChild(placeholder);
+
+  state.degrees.forEach((deg) => {
+    const option = document.createElement("option");
+    option.value = deg.degree_id ?? deg.id;
+    option.textContent = `${deg.degree_id ?? deg.id}: ${deg.name || "Degree"} (${deg.level || ""})`.trim();
+    assocDegreeSelect.appendChild(option);
   });
-  queryResultsEl.innerHTML = "";
-  queryResultsEl.appendChild(fragment);
+
+  if (evalDegreeSelect) {
+    evalDegreeSelect.innerHTML = assocDegreeSelect.innerHTML;
+  }
+}
+
+function populateAssocObjectiveDegrees() {
+  if (!assocDegreeSelect) return;
+  // degree select already populated by populateAssocDegrees
+}
+
+function populateAssocCourses() {
+  if (!assocCourseSelect) return;
+  assocCourseSelect.innerHTML = "";
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "Select a course";
+  placeholder.disabled = true;
+  placeholder.selected = true;
+  assocCourseSelect.appendChild(placeholder);
+
+  state.courses.forEach((course) => {
+    const option = document.createElement("option");
+    option.value = course.course_id ?? course.id;
+    option.textContent = `${course.course_number || ""} — ${course.name || "Course"}`.trim();
+    assocCourseSelect.appendChild(option);
+  });
+}
+
+function populateAssocObjectives() {
+  if (!assocObjectiveSelect) return;
+  assocObjectiveSelect.innerHTML = "";
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "Select an objective";
+  placeholder.disabled = true;
+  placeholder.selected = true;
+  assocObjectiveSelect.appendChild(placeholder);
+
+  state.objectives.forEach((obj) => {
+    const option = document.createElement("option");
+    option.value = obj.objective_id ?? obj.id;
+    option.textContent = `${obj.code || ""} — ${obj.title || "Objective"}`.trim();
+    assocObjectiveSelect.appendChild(option);
+  });
+}
+
+function populateEvaluationObjectives() {
+  if (!evaluationObjectiveSelect) return;
+  evaluationObjectiveSelect.innerHTML = "";
+
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "Select objective";
+  placeholder.disabled = true;
+  placeholder.selected = true;
+  evaluationObjectiveSelect.appendChild(placeholder);
+
+  state.objectives.forEach((obj) => {
+    const option = document.createElement("option");
+    option.value = obj.objective_id ?? obj.id;
+    option.textContent = `${obj.code || ""} — ${obj.title || "Objective"}`.trim();
+    evaluationObjectiveSelect.appendChild(option);
+  });
+}
+
+function populateQueryDegrees() {
+  if (!queryDegreeSelect) return;
+  queryDegreeSelect.innerHTML = "";
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "Select a degree";
+  placeholder.disabled = true;
+  placeholder.selected = true;
+  queryDegreeSelect.appendChild(placeholder);
+
+  state.degrees.forEach((deg) => {
+    const option = document.createElement("option");
+    option.value = deg.degree_id ?? deg.id;
+    option.textContent = `${deg.degree_id ?? deg.id}: ${deg.name || "Degree"} (${deg.level || ""})`.trim();
+    queryDegreeSelect.appendChild(option);
+  });
+}
+
+async function linkCourseObjectiveSubmit(event) {
+  event.preventDefault();
+  const degreeId = assocDegreeSelect?.value;
+  const courseId = assocCourseSelect?.value;
+  const objectiveId = assocObjectiveSelect?.value;
+  const isCore = assocDegreeCoreCheckbox?.checked ? 1 : 0;
+  if (!degreeId || !courseId || !objectiveId) {
+    setAssociationMessage("Select degree, course, and objective.", "error");
+    return;
+  }
+
+  const payload = {
+    degree_id: Number(degreeId),
+    course_id: Number(courseId),
+    objective_id: Number(objectiveId),
+    is_core: isCore,
+  };
+
+  const result = await apiRequest("/course-objectives", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  if (result.ok) {
+    setAssociationMessage("Linked course to objective (and degree).", "success");
+  } else {
+    setAssociationMessage(result.error || "Could not link course to objective.", "error");
+  }
+}
+
+async function linkCourseToDegree() {
+  // No-op placeholder; combined in course-objective association.
 }
 
 function log(message) {
@@ -423,4 +963,107 @@ function log(message) {
   const entry = document.createElement("div");
   entry.textContent = `[${time}] ${message}`;
   logEl.prepend(entry);
+}
+function renderSectionsList(sections = [], title = "", targetEl = queryResultsEl, onSelect) {
+  if (!targetEl) return;
+  if (!sections.length) {
+    const prefix = title ? `${title}: ` : "";
+    targetEl.innerHTML = `<div class="empty">${prefix}No sections found.</div>`;
+    return;
+  }
+
+  const fragment = document.createDocumentFragment();
+  if (title) {
+    const heading = document.createElement("div");
+    heading.className = "subhead";
+    heading.textContent = title;
+    fragment.appendChild(heading);
+  }
+
+  sections.forEach((s, idx) => {
+    const card = document.createElement("div");
+    card.className = "card";
+    const titleEl = document.createElement("div");
+    titleEl.className = "card__title";
+    titleEl.textContent = `Section ${s.section_number || ""} — ${s.semester || s.term || ""} ${s.year || ""}`;
+    card.appendChild(titleEl);
+
+    const meta = document.createElement("div");
+    meta.className = "card__meta";
+    const courseLabel = s.course_number || s.course_id || "";
+    meta.textContent = `Course: ${courseLabel} • Instructor: ${s.instructor_name || s.instructor_id || ""}`;
+    card.appendChild(meta);
+    if (typeof onSelect === "function") {
+      card.classList.add("clickable");
+      card.tabIndex = 0;
+      card.addEventListener("click", () => onSelect(s));
+      card.addEventListener("keypress", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onSelect(s);
+        }
+      });
+    }
+    fragment.appendChild(card);
+  });
+
+  targetEl.innerHTML = "";
+  targetEl.appendChild(fragment);
+}
+
+function resetEvaluationFields() {
+  const form = document.getElementById("evaluation-form");
+  if (!form) return;
+  form.elements.eval_method.value = "";
+  form.elements.count_A.value = 0;
+  form.elements.count_B.value = 0;
+  form.elements.count_C.value = 0;
+  form.elements.count_F.value = 0;
+  form.elements.improvement_text.value = "";
+  if (evaluationObjectiveSelect) {
+    evaluationObjectiveSelect.value = "";
+  }
+}
+
+async function showEvaluationDetails(section) {
+  if (!evaluationDetailsEl || !evaluationSectionIdInput) return;
+  resetEvaluationFields();
+  evaluationSectionIdInput.value = section.section_id || "";
+  const label = [
+    section.course_number || section.course_name || section.course_id || "",
+    section.section_number ? `Section ${section.section_number}` : "",
+    section.term || section.semester ? `${section.term || section.semester} ${section.year || ""}` : "",
+  ]
+    .filter(Boolean)
+    .join(" — ");
+  if (evaluationSectionInfoEl) {
+    evaluationSectionInfoEl.textContent = label || "Selected section";
+  }
+  evaluationDetailsEl.style.display = "block";
+
+  const degreeId = evalDegreeSelect?.value;
+  if (!degreeId) return;
+
+  const evalRes = await apiRequest("/evaluations", { method: "GET" });
+  const rows = evalRes.ok && Array.isArray(evalRes.data) ? evalRes.data : [];
+  const match = rows.find(
+    (row) =>
+      Number(row.section_id) === Number(section.section_id) &&
+      Number(row.degree_id) === Number(degreeId)
+  );
+
+  if (match) {
+    if (evaluationObjectiveSelect && match.objective_id) {
+      evaluationObjectiveSelect.value = String(match.objective_id);
+    }
+    const form = document.getElementById("evaluation-form");
+    if (form) {
+      form.elements.eval_method.value = match.eval_method || "";
+      form.elements.count_A.value = match.count_A ?? 0;
+      form.elements.count_B.value = match.count_B ?? 0;
+      form.elements.count_C.value = match.count_C ?? 0;
+      form.elements.count_F.value = match.count_F ?? 0;
+      form.elements.improvement_text.value = match.improvement_text || match.improvement_suggestion || "";
+    }
+  }
 }
