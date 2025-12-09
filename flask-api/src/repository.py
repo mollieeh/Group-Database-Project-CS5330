@@ -98,7 +98,15 @@ def get_instructor_by_id(instructor_id: chr):
 # SECTION
 def create_section(course_id: int, section_number: str, semester: str, year: int, enrollment: int, instructor_id: str):
     cur = cnx.cursor()
-    cur.execute("INSERT INTO SECTION (course_id, section_number, semester, year, enrollment, instructor_id) VALUES (%s, %s, %s, %s, %s, %s);", (course_id, section_number, semester, year, enrollment, instructor_id))
+    # Ensure the SEMESTER record exists to satisfy FK constraint.
+    cur.execute(
+        "INSERT IGNORE INTO SEMESTER (year, term) VALUES (%s, %s);",
+        (year, semester),
+    )
+    cur.execute(
+        "INSERT INTO SECTION (course_id, section_number, term, year, enrollment_count, instructor_id) VALUES (%s, %s, %s, %s, %s, %s);",
+        (course_id, section_number, semester, year, enrollment, instructor_id),
+    )
     cnx.commit()
     new_id = cur.lastrowid
     cur.close()
@@ -114,12 +122,12 @@ def create_section(course_id: int, section_number: str, semester: str, year: int
 
 def get_sections():
     cur = cnx.cursor(dictionary=True)
-    cur.execute("""SELECT s.section_id, s.course_id, c.course_number, c.name AS course_name, s.section_number, s.semester, s.year, s.enrollment, s.instructor_id, i.name AS instructor_name
+    cur.execute("""SELECT s.section_id, s.course_id, c.course_number, c.name AS course_name, s.section_number, s.term AS semester, s.year, s.enrollment_count AS enrollment, s.instructor_id, i.name AS instructor_name
                 FROM SECTION s
                 JOIN COURSE c on s.course_id = c.course_id
                 JOIN INSTRUCTOR i on s.instructor_id = i.instructor_id
                 ORDER BY s.year DESC, 
-                 FIELD(s.semester, 'Spring', 'Summer', 'Fall') DESC,
+                 FIELD(s.term, 'Spring', 'Summer', 'Fall') DESC,
                  c.course_number, s.section_number;""")
     rows = cur.fetchall()
     cur.close()
@@ -127,7 +135,7 @@ def get_sections():
 
 def get_section_by_id(section_id: int):
     cur = cnx.cursor(dictionary=True)
-    cur.execute("""SELECT s.section_id, s.course_id, c.course_number, c.name as course_name, s.section_number, s.semester, s.year, s.enrollment, s.instructor_id, i.name as instructor_name
+    cur.execute("""SELECT s.section_id, s.course_id, c.course_number, c.name as course_name, s.section_number, s.term AS semester, s.year, s.enrollment_count AS enrollment, s.instructor_id, i.name as instructor_name
         FROM SECTION s
         JOIN COURSE c ON s.course_id = c.course_id
         LEFT JOIN INSTRUCTOR i ON s.instructor_id = i.instructor_id
@@ -141,13 +149,13 @@ def get_section_by_instructor(instructor_id: str, start_year: int = None, end_ye
     #get sections taught by instructor give beased on range of semsters
     cur = cnx.cursor(dictionary=True)
     cur.execute("""
-            SELECT i.name AS instructor_name, c.course_number, c.name AS course_name, s.year, s.term, s.section_number 
+            SELECT i.name AS instructor_name, c.course_number, c.name AS course_name, s.year, s.term AS semester, s.section_number 
                 FROM INSTRUCTOR i
                 JOIN SECTION s on i.instructor_id = s.instructor_id
                 JOIN COURSE c on s.course_id = c.course_id
                 WHERE i.instructor_id = %s
 	                AND (s.year BETWEEN %s AND %s)
-                ORDER BY s.year DESC, s.term, c.course_number, s.section_number;""", (instructor_id, start_year, end_year))
+                ORDER BY s.year DESC, FIELD(s.term, 'Spring', 'Summer', 'Fall') DESC, c.course_number, s.section_number;""", (instructor_id, start_year, end_year))
     rows = cur.fetchall()
     cur.close()
     return rows
@@ -156,13 +164,13 @@ def get_section_by_course(course_id: int, start_year: int = None, end_year: int 
     # get sections given a course for specific range of semesters
     cur = cnx.cursor(dictionary=True)
     cur.execute("""
-            SELECT section_number, instructor_name, c.name AS course_name, s.year, s.term 
+            SELECT s.section_number, i.name AS instructor_name, c.name AS course_name, s.year, s.term AS semester 
                 FROM COURSE c
                 JOIN SECTION s on c.course_id = s.course_id
                 JOIN INSTRUCTOR i on s.instructor_id = i.instructor_id
                 WHERE c.course_id = %s
 	                AND (s.year BETWEEN %s AND %s)
-                ORDER BY s.year DESC, s.term, section_number;""", (course_id, start_year, end_year))
+                ORDER BY s.year DESC, FIELD(s.term, 'Spring', 'Summer', 'Fall') DESC, s.section_number;""", (course_id, start_year, end_year))
     rows = cur.fetchall()
     cur.close()
     return rows
@@ -239,7 +247,7 @@ def get_evaluations():
         SELECT e.section_id, e.objective_id, e.degree_id,
                e.eval_method, e.count_A, e.count_B, e.count_C, e.count_F,
                e.improvement_suggestion,
-               s.section_number, s.semester, s.year,
+               s.section_number, s.term AS semester, s.year,
                c.course_number, c.name as course_name,
                o.code as objective_code, o.title as objective_title,
                d.name as degree_name, d.level as degree_level
@@ -248,7 +256,7 @@ def get_evaluations():
         JOIN COURSE c ON s.course_id = c.course_id
         JOIN OBJECTIVE o ON e.objective_id = o.objective_id
         JOIN DEGREE d ON e.degree_id = d.degree_id
-        ORDER BY s.year DESC, FIELD(s.semester, 'Spring', 'Summer', 'Fall') DESC;
+        ORDER BY s.year DESC, FIELD(s.term, 'Spring', 'Summer', 'Fall') DESC;
     """)
     rows = cur.fetchall()
     cur.close()

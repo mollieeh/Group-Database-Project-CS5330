@@ -194,7 +194,7 @@ def sections():
     except (TypeError, ValueError):
         return jsonify({"error": "course_id is required"}), 400
 
-    section_number = (data.get('section_number') or "").strip()
+    section_number = (data.get('section_number') or "") # .strip()
     semester = (data.get('semester') or "").strip()
 
     try:
@@ -202,15 +202,15 @@ def sections():
     except (TypeError, ValueError):
         return jsonify({"error": "year is required"}), 400
 
-    if not section_number or not semester:
-        return jsonify({"error": "section_number and semester are required"}), 400
+    # if not section_number or not semester:
+    #     return jsonify({"error": "section_number and semester are required"}), 400
 
-    valid_semesters = ['Spring', 'Summer', 'Fall']
-    if semester not in valid_semesters:
-        return jsonify({"error": f"semester must be one of: {', '.join(valid_semesters)}"}), 400
+    # valid_semesters = ['Spring', 'Summer', 'Fall']
+    # if semester not in valid_semesters:
+    #     return jsonify({"error": f"semester must be one of: {', '.join(valid_semesters)}"}), 400
 
-    if len(section_number) > 3:
-        return jsonify({"error": "section_number must be 3 digits or less"}), 400
+    # if len(section_number) > 3:
+    #     return jsonify({"error": "section_number must be 3 digits or less"}), 400
 
     enrollment = data.get('enrollment', 0)
     instructor_id = data.get('instructor_id')
