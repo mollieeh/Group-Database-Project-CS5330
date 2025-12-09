@@ -16,6 +16,8 @@ const sectionCourseSelect = document.getElementById("section-course-select");
 const assocDegreeSelect = document.getElementById("assoc-degree-select");
 const assocCourseSelect = document.getElementById("assoc-course-select");
 const assocObjectiveSelect = document.getElementById("assoc-objective-select");
+const assocDegreeCourseSelect = document.getElementById("assoc-degree-course-select");
+const assocDegreeCoreCheckbox = document.getElementById("assoc-degree-core");
 
 const state = {
   apiBase: apiInput.value.trim(),
@@ -57,6 +59,7 @@ document.getElementById("refresh-degrees").addEventListener("click", fetchDegree
 document.getElementById("reload-degrees").addEventListener("click", fetchDegrees);
 document.getElementById("reload-objectives").addEventListener("click", fetchObjectives);
 document.getElementById("duplicate-eval").addEventListener("click", duplicateEvaluation);
+document.getElementById("link-course-degree")?.addEventListener("click", linkCourseToDegree);
 
 function init() {
   const storedBase = localStorage.getItem("apiBase");
@@ -199,6 +202,7 @@ async function fetchDegrees() {
   renderDegrees(degrees);
   setApiStatus(`Loaded ${degrees.length} item(s)`, false);
   populateAssocDegrees();
+  populateDegreeCourseDegrees();
 }
 
 async function fetchCourses() {
@@ -217,6 +221,7 @@ async function fetchCourses() {
   state.courses = courses;
   renderSectionCourseOptions(courses);
   populateAssocCourses();
+  populateDegreeCourseCourses();
 }
 
 async function fetchInstructors() {
@@ -585,6 +590,8 @@ function populateAssocDropdowns() {
   populateAssocDegrees();
   populateAssocCourses();
   populateAssocObjectives();
+  populateDegreeCourseDegrees();
+  populateDegreeCourseCourses();
 }
 
 function populateAssocDegrees() {
@@ -638,6 +645,42 @@ function populateAssocObjectives() {
     option.value = obj.objective_id ?? obj.id;
     option.textContent = `${obj.code || ""} — ${obj.title || "Objective"}`.trim();
     assocObjectiveSelect.appendChild(option);
+  });
+}
+
+function populateDegreeCourseDegrees() {
+  if (!assocDegreeSelect) return;
+  assocDegreeSelect.innerHTML = "";
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "Select a degree";
+  placeholder.disabled = true;
+  placeholder.selected = true;
+  assocDegreeSelect.appendChild(placeholder);
+
+  state.degrees.forEach((deg) => {
+    const option = document.createElement("option");
+    option.value = deg.degree_id ?? deg.id;
+    option.textContent = `${deg.degree_id ?? deg.id}: ${deg.name || "Degree"} (${deg.level || ""})`.trim();
+    assocDegreeSelect.appendChild(option);
+  });
+}
+
+function populateDegreeCourseCourses() {
+  if (!assocDegreeCourseSelect) return;
+  assocDegreeCourseSelect.innerHTML = "";
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "Select a course";
+  placeholder.disabled = true;
+  placeholder.selected = true;
+  assocDegreeCourseSelect.appendChild(placeholder);
+
+  state.courses.forEach((course) => {
+    const option = document.createElement("option");
+    option.value = course.course_id ?? course.id;
+    option.textContent = `${course.course_number || ""} — ${course.name || "Course"}`.trim();
+    assocDegreeCourseSelect.appendChild(option);
   });
 }
 
