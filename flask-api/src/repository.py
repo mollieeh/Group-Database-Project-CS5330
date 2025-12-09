@@ -1,3 +1,4 @@
+import mysql.connector
 from db_connection import create_mysql_connection
 
 cnx = create_mysql_connection()
@@ -21,11 +22,16 @@ def get_degree_by_id(degree_id: int):
 
 def create_degree(name: str, level: str):
     cur = cnx.cursor()
-    cur.execute("INSERT INTO DEGREE (name, level) VALUES (%s, %s);", (name, level))
-    cnx.commit()
-    new_id = cur.lastrowid
-    cur.close()
-    return {"degree_id": new_id, "name": name, "level": level}
+    try:
+        cur.execute("INSERT INTO DEGREE (name, level) VALUES (%s, %s);", (name, level))
+        cnx.commit()
+        new_id = cur.lastrowid
+        return {"degree_id": new_id, "name": name, "level": level}
+    except mysql.connector.IntegrityError:
+        cnx.rollback()
+        raise
+    finally:
+        cur.close()
 
 # COURSES
 def get_course(coursename):
@@ -51,19 +57,29 @@ def get_courses():
 
 def create_course(course_number: str, name: str):
     cur = cnx.cursor()
-    cur.execute("INSERT INTO COURSE (course_number, name) VALUES (%s, %s);", (course_number, name))
-    cnx.commit()
-    new_id = cur.lastrowid
-    cur.close()
-    return {"course_id": new_id, "course_number": course_number, "name": name}
+    try:
+        cur.execute("INSERT INTO COURSE (course_number, name) VALUES (%s, %s);", (course_number, name))
+        cnx.commit()
+        new_id = cur.lastrowid
+        return {"course_id": new_id, "course_number": course_number, "name": name}
+    except mysql.connector.IntegrityError:
+        cnx.rollback()
+        raise
+    finally:
+        cur.close()
 
 # INSTRUCTOR
 def create_instructor(id: str, name: str):
     cur = cnx.cursor()
-    cur.execute("INSERT INTO INSTRUCTOR (instructor_id, name) VALUES (%s, %s)", (id, name))
-    cnx.commit()
-    cur.close()
-    return {"instructor_id": id, "name": name}
+    try:
+        cur.execute("INSERT INTO INSTRUCTOR (instructor_id, name) VALUES (%s, %s)", (id, name))
+        cnx.commit()
+        return {"instructor_id": id, "name": name}
+    except mysql.connector.IntegrityError:
+        cnx.rollback()
+        raise
+    finally:
+        cur.close()
 
 def get_instructors():
     cur = cnx.cursor(dictionary=True)

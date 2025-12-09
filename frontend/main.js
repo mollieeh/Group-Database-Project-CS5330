@@ -2,6 +2,9 @@ const apiInput = document.getElementById("api-base");
 const apiStatusEl = document.getElementById("api-status");
 const degreeListEl = document.getElementById("degree-list");
 const degreeCountEl = document.getElementById("degree-count");
+const degreeMessageEl = document.getElementById("degree-message");
+const courseMessageEl = document.getElementById("course-message");
+const instructorMessageEl = document.getElementById("instructor-message");
 const logEl = document.getElementById("log");
 const evaluationPreviewEl = document.getElementById("evaluation-preview");
 const queryResultsEl = document.getElementById("query-results");
@@ -86,7 +89,14 @@ function bindForms() {
         log(`Saved via ${method} ${endpoint}`);
         form.reset();
         if (endpoint === "/degrees") {
+          setDegreeMessage(`Saved "${payload.name}" (${payload.level})`, "success");
           fetchDegrees();
+        }
+        if (endpoint === "/courses") {
+          setCourseMessage(`Saved course "${payload.name}" (${payload.course_number})`, "success");
+        }
+        if (endpoint === "/instructors") {
+          setInstructorMessage(`Saved instructor "${payload.name}" (${payload.instructor_id})`, "success");
         }
         if (endpoint === "/objectives") {
           fetchObjectives();
@@ -99,6 +109,24 @@ function bindForms() {
           fetchDegreeCourses(payload.degree_id);
         }
       } else {
+        if (endpoint === "/degrees" && result.status === 409) {
+          setDegreeMessage("Degree already exists for that name and level.", "error");
+          log("Degree already exists.");
+        } else if (endpoint === "/degrees") {
+          setDegreeMessage("Could not save degree. Please try again.", "error");
+        }
+        if (endpoint === "/courses" && result.status === 409) {
+          setCourseMessage("Course already exists (number or name).", "error");
+          log("Course already exists.");
+        } else if (endpoint === "/courses") {
+          setCourseMessage("Could not save course. Please try again.", "error");
+        }
+        if (endpoint === "/instructors" && result.status === 409) {
+          setInstructorMessage("Instructor already exists.", "error");
+          log("Instructor already exists.");
+        } else if (endpoint === "/instructors") {
+          setInstructorMessage("Could not save instructor. Please try again.", "error");
+        }
         log(`Failed to reach ${endpoint}: ${result.error || result.status}`);
       }
     });
@@ -327,6 +355,30 @@ function renderDegrees(degrees) {
 function setApiStatus(text, isError = false) {
   apiStatusEl.textContent = text;
   apiStatusEl.className = `badge ${isError ? "" : "badge--muted"}`;
+}
+
+function setDegreeMessage(text, tone = "muted") {
+  if (!degreeMessageEl) return;
+  const toneClass =
+    tone === "success" ? "badge--success" : tone === "error" ? "badge--error" : "badge--muted";
+  degreeMessageEl.textContent = text;
+  degreeMessageEl.className = `badge ${toneClass}`;
+}
+
+function setCourseMessage(text, tone = "muted") {
+  if (!courseMessageEl) return;
+  const toneClass =
+    tone === "success" ? "badge--success" : tone === "error" ? "badge--error" : "badge--muted";
+  courseMessageEl.textContent = text;
+  courseMessageEl.className = `badge ${toneClass}`;
+}
+
+function setInstructorMessage(text, tone = "muted") {
+  if (!instructorMessageEl) return;
+  const toneClass =
+    tone === "success" ? "badge--success" : tone === "error" ? "badge--error" : "badge--muted";
+  instructorMessageEl.textContent = text;
+  instructorMessageEl.className = `badge ${toneClass}`;
 }
 
 function duplicateEvaluation() {

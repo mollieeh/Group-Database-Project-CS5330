@@ -1,4 +1,5 @@
 from flask import Flask, jsonify, request, flash
+import mysql.connector
 import repository
 
 app = Flask(__name__)
@@ -31,7 +32,11 @@ def get_degrees():
     if not degree_name or not degree_level:
         return jsonify({"error": "Both name and level are required"}), 400
 
-    created = repository.create_degree(degree_name, degree_level)
+    try:
+        created = repository.create_degree(degree_name, degree_level)
+    except mysql.connector.IntegrityError:
+        return jsonify({"error": "Degree already exists"}), 409
+
     return jsonify(created), 201
 
     # getting degree by id
@@ -73,7 +78,11 @@ def courses():
     if not course_number or not course_name:
         return jsonify({"error": "Both course_number and name are required"}), 400
 
-    created = repository.create_course(course_number, course_name)
+    try:
+        created = repository.create_course(course_number, course_name)
+    except mysql.connector.IntegrityError:
+        return jsonify({"error": "Course already exists"}), 409
+
     return jsonify(created), 201
 
 @app.route("/courses/<int:course_id>", methods=['GET'])
@@ -111,7 +120,11 @@ def instructors():
     if len(instructor_id) != 8 or not instructor_id.isnumeric():
         return jsonify({"error": "invalid instructor id (must be an 8 digit number)"}), 400
 
-    created = repository.create_instructor(instructor_id, name)
+    try:
+        created = repository.create_instructor(instructor_id, name)
+    except mysql.connector.IntegrityError:
+        return jsonify({"error": "Instructor already exists"}), 409
+
     return jsonify(created), 201
     
 @app.route("/instructors/<instructor_id>", methods=['GET'])
