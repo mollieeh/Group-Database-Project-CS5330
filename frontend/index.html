@@ -11,10 +11,9 @@
     <header class="hero">
       <div class="hero__text">
         <p class="eyebrow">Program Evaluation</p>
-        <h1>Program Evaluation Console</h1>
+        <h1>Program Evaluation Website</h1>
         <p class="lede">
-          Capture degrees, courses, sections, learning objectives, and semester evaluations in one lightweight dashboard.
-          Point it at your Flask API and start sending data.
+          Used tp help university's with reviewing degree programs.
         </p>
         <div class="hero__controls">
           <label class="label" for="api-base">API base URL</label>
@@ -44,7 +43,6 @@
         <div>
           <p class="eyebrow">Live data</p>
           <h2>Degrees &amp; levels</h2>
-          <p class="subhead">Fetched from your `/degrees` endpoint. Works even if the API is still booting by falling back to sample data.</p>
         </div>
         <div class="toolbar">
           <button id="reload-degrees" class="ghost">Reload</button>
@@ -53,18 +51,6 @@
       <div id="degree-list" class="card-list">
         <div class="empty">No data loaded yet.</div>
       </div>
-      <div class="panel nested">
-        <div class="panel__head">
-          <div>
-            <p class="eyebrow">Courses</p>
-            <h3>Courses for selected degree</h3>
-            <p class="subhead">Click a degree card to load its courses.</p>
-          </div>
-        </div>
-        <div id="degree-course-list" class="card-list tight">
-          <div class="empty">Select a degree to see courses.</div>
-        </div>
-      </div>
     </section>
 
     <section class="panel wide">
@@ -72,7 +58,6 @@
         <div>
           <p class="eyebrow">Objectives</p>
           <h2>Learning objectives</h2>
-          <p class="subhead">Fetched from `/objectives`. Newly created objectives appear here.</p>
         </div>
         <div class="toolbar">
           <button id="reload-objectives" class="ghost">Reload</button>

@@ -612,7 +612,9 @@ async function runQuery(form) {
   const payload = serializeForm(form);
   const params = new URLSearchParams();
   Object.entries(payload).forEach(([key, value]) => {
-    params.append(key, value);
+    if (value !== undefined && value !== "") {
+      params.append(key, value);
+    }
   });
   const path = params.toString() ? `${endpoint}?${params.toString()}` : endpoint;
   const response = await apiRequest(path, { method: "GET" });
@@ -624,6 +626,62 @@ async function runQuery(form) {
     log(`Query fallback for ${path}`);
     renderQueryResults(state.sample.evaluations);
   }
+}
+
+function renderQueryResults(data) {
+  if (!queryResultsEl) return;
+
+  if (!data || (Array.isArray(data) && !data.length)) {
+    queryResultsEl.innerHTML = `<div class="empty">No data returned.</div>`;
+    return;
+  }
+
+  // If evaluations array, render only the related sections
+  if (Array.isArray(data) && data.length && data[0].section_id !== undefined && data[0].objective_id !== undefined) {
+    const seen = new Set();
+    const sections = data
+      .map((row) => ({
+        section_id: row.section_id,
+        section_number: row.section_number || "",
+        term: row.term || row.semester || "",
+        year: row.year,
+        course_id: row.course_id,
+        course_number: row.course_number,
+        instructor_id: row.instructor_id,
+        instructor_name: row.instructor_name,
+        enrollment_count: row.enrollment_count || row.enrollment,
+      }))
+      .filter((row) => {
+        if (seen.has(row.section_id)) return false;
+        seen.add(row.section_id);
+        return true;
+      });
+
+    renderSectionsList(sections, "Sections", queryResultsEl);
+    return;
+  }
+
+  if (Array.isArray(data)) {
+    const fragment = document.createDocumentFragment();
+    data.forEach((row, idx) => {
+      const card = document.createElement("div");
+      card.className = "card";
+      const title = document.createElement("div");
+      title.className = "card__title";
+      title.textContent = row.title || row.name || `Item ${idx + 1}`;
+      card.appendChild(title);
+      const meta = document.createElement("div");
+      meta.className = "card__meta";
+      meta.textContent = JSON.stringify(row);
+      card.appendChild(meta);
+      fragment.appendChild(card);
+    });
+    queryResultsEl.innerHTML = "";
+    queryResultsEl.appendChild(fragment);
+    return;
+  }
+
+  queryResultsEl.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
 }
 
 function renderDegreeQueryResults(degreeId, courses, objectives, sections) {
