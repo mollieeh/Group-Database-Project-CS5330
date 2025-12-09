@@ -417,6 +417,36 @@ def get_section_for_degree(degree_id: int, start_year: int, start_term: str, end
     return rows 
 
 
+def get_sections_for_degree(degree_id: int):
+    """List all sections whose courses belong to a given degree."""
+    cur = cnx.cursor(dictionary=True)
+    cur.execute(
+        """
+        SELECT 
+            s.section_id,
+            s.course_id,
+            c.course_number,
+            c.name AS course_name,
+            s.year,
+            s.term,
+            s.section_number,
+            s.instructor_id,
+            i.name AS instructor_name,
+            s.enrollment_count
+        FROM SECTION s
+        JOIN COURSE c ON c.course_id = s.course_id
+        JOIN DEGREE_COURSE dc ON dc.course_id = s.course_id
+        LEFT JOIN INSTRUCTOR i ON i.instructor_id = s.instructor_id
+        WHERE dc.degree_id = %s
+        ORDER BY s.year DESC, FIELD(s.term,'Spring','Summer','Fall') DESC, c.course_number, s.section_number;
+        """,
+        (degree_id,),
+    )
+    rows = cur.fetchall()
+    cur.close()
+    return rows
+
+
 
         #course obj.
 def link_course_objective(degree_id: int, course_id: int, objective_id: int):

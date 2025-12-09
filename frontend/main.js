@@ -588,19 +588,18 @@ async function runQuery(form) {
     }
     const coursePath = `/degrees/${degreeId}/courses`;
     const objectivesPath = `/degrees/${degreeId}/objectives`;
+    const sectionsPath = `/degrees/${degreeId}/sections`;
 
     const [courseRes, objectiveRes, sectionsRes] = await Promise.all([
       apiRequest(coursePath, { method: "GET" }),
       apiRequest(objectivesPath, { method: "GET" }),
-      apiRequest("/sections", { method: "GET" }),
+      apiRequest(sectionsPath, { method: "GET" }),
     ]);
 
     const courses = courseRes.ok && Array.isArray(courseRes.data) ? courseRes.data : [];
     const objectives = objectiveRes.ok && Array.isArray(objectiveRes.data) ? objectiveRes.data : [];
 
     let sections = sectionsRes.ok && Array.isArray(sectionsRes.data) ? sectionsRes.data : [];
-    const courseIds = new Set(courses.map((c) => c.course_id));
-    sections = sections.filter((s) => courseIds.has(s.course_id));
 
     renderDegreeQueryResults(degreeId, courses, objectives, sections);
     log(`Query success: courses/objectives/sections for degree ${degreeId}`);
@@ -627,89 +626,81 @@ async function runQuery(form) {
 function renderDegreeQueryResults(degreeId, courses, objectives, sections) {
   const fragment = document.createDocumentFragment();
 
-  const courseTitle = document.createElement("div");
-  courseTitle.className = "subhead";
-  courseTitle.textContent = `Courses for degree ${degreeId}:`;
-  fragment.appendChild(courseTitle);
+  const addBlock = (titleText, nodes) => {
+    const block = document.createElement("div");
+    block.className = "query-block";
 
-  if (!courses.length) {
-    const empty = document.createElement("div");
-    empty.className = "empty";
-    empty.textContent = "No courses found.";
-    fragment.appendChild(empty);
-  } else {
-    courses.forEach((c) => {
-      const card = document.createElement("div");
-      card.className = "card";
-      const title = document.createElement("div");
-      title.className = "card__title";
-      title.textContent = `${c.course_number || ""} — ${c.course_name || c.name || "Course"}`;
-      card.appendChild(title);
-      const meta = document.createElement("div");
-      meta.className = "card__meta";
-      meta.textContent = `ID: ${c.course_id ?? ""} • Type: ${
-        c.course_type || (c.is_core ? "Core" : "Elective")
-      }`;
-      card.appendChild(meta);
-      fragment.appendChild(card);
-    });
-  }
+    const title = document.createElement("div");
+    title.className = "subhead";
+    title.textContent = titleText;
+    block.appendChild(title);
 
-  const objTitle = document.createElement("div");
-  objTitle.className = "subhead";
-  objTitle.textContent = "Objectives:";
-  fragment.appendChild(objTitle);
-  if (!objectives.length) {
-    const empty = document.createElement("div");
-    empty.className = "empty";
-    empty.textContent = "No objectives found.";
-    fragment.appendChild(empty);
-  } else {
-    objectives.forEach((o) => {
-      const card = document.createElement("div");
-      card.className = "card";
-      const title = document.createElement("div");
-      title.className = "card__title";
-      title.textContent = `${o.code || ""} — ${o.title || "Objective"}`;
-      card.appendChild(title);
-      const meta = document.createElement("div");
-      meta.className = "card__meta";
-      meta.textContent = o.description || "";
-      card.appendChild(meta);
-      fragment.appendChild(card);
-    });
-  }
+    if (!nodes.length) {
+      const empty = document.createElement("div");
+      empty.className = "empty";
+      empty.textContent = "No results found.";
+      block.appendChild(empty);
+    } else {
+      nodes.forEach((node) => block.appendChild(node));
+    }
 
-  const secTitle = document.createElement("div");
-  secTitle.className = "subhead";
-  secTitle.textContent = "Sections (filtered to this degree's courses):";
-  fragment.appendChild(secTitle);
+    fragment.appendChild(block);
+  };
 
-  if (!sections.length) {
-    const empty = document.createElement("div");
-    empty.className = "empty";
-    empty.textContent = "No sections found.";
-    fragment.appendChild(empty);
-  } else {
-    const ordered = sections.slice().sort((a, b) => {
-      const termOrder = { Spring: 1, Summer: 2, Fall: 3 };
-      if (b.year !== a.year) return b.year - a.year;
-      return (termOrder[b.term || b.semester] || 0) - (termOrder[a.term || a.semester] || 0);
-    });
-    ordered.forEach((s) => {
-      const card = document.createElement("div");
-      card.className = "card";
-      const title = document.createElement("div");
-      title.className = "card__title";
-      title.textContent = `Section ${s.section_number || ""} — ${s.semester || s.term || ""} ${s.year || ""}`;
-      card.appendChild(title);
-      const meta = document.createElement("div");
-      meta.className = "card__meta";
-      meta.textContent = `Course ID: ${s.course_id ?? ""} • Instructor: ${s.instructor_name || s.instructor_id || ""} • Enrollment: ${s.enrollment_count || s.enrollment || ""}`;
-      card.appendChild(meta);
-      fragment.appendChild(card);
-    });
-  }
+  const courseCards = courses.map((c) => {
+    const card = document.createElement("div");
+    card.className = "card";
+    const title = document.createElement("div");
+    title.className = "card__title";
+    title.textContent = `${c.course_number || ""} — ${c.course_name || c.name || "Course"}`;
+    card.appendChild(title);
+    const meta = document.createElement("div");
+    meta.className = "card__meta";
+    meta.textContent = `ID: ${c.course_id ?? ""} • Type: ${
+      c.course_type || (c.is_core ? "Core" : "Elective")
+    }`;
+    card.appendChild(meta);
+    return card;
+  });
+
+  const objectiveCards = objectives.map((o) => {
+    const card = document.createElement("div");
+    card.className = "card";
+    const title = document.createElement("div");
+    title.className = "card__title";
+    const code = o.code || o.objective_code || "";
+    const titleText = o.title || o.objective_title || "Objective";
+    title.textContent = `${code} — ${titleText}`;
+    card.appendChild(title);
+    const meta = document.createElement("div");
+    meta.className = "card__meta";
+    meta.textContent = o.description || o.objective_description || "";
+    card.appendChild(meta);
+    return card;
+  });
+
+  const termOrder = { Spring: 1, Summer: 2, Fall: 3 };
+  const orderedSections = sections
+    .slice()
+    .sort((a, b) => (b.year || 0) - (a.year || 0) || (termOrder[b.term || b.semester] || 0) - (termOrder[a.term || a.semester] || 0));
+
+  const sectionCards = orderedSections.map((s) => {
+    const card = document.createElement("div");
+    card.className = "card";
+    const title = document.createElement("div");
+    title.className = "card__title";
+    title.textContent = `Section ${s.section_number || ""} — ${s.semester || s.term || ""} ${s.year || ""}`;
+    card.appendChild(title);
+    const meta = document.createElement("div");
+    meta.className = "card__meta";
+    meta.textContent = `Course ID: ${s.course_id ?? ""} • Instructor: ${s.instructor_name || s.instructor_id || ""} • Enrollment: ${s.enrollment_count || s.enrollment || ""}`;
+    card.appendChild(meta);
+    return card;
+  });
+
+  addBlock(`Courses for degree ${degreeId}:`, courseCards);
+  addBlock("Objectives:", objectiveCards);
+  addBlock("Sections:", sectionCards);
 
   queryResultsEl.innerHTML = "";
   queryResultsEl.appendChild(fragment);

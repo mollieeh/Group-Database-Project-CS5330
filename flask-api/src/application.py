@@ -59,6 +59,11 @@ def degree_objectives(degree_id: int):
     objectives = repository.get_objectives_for_degree(degree_id)
     return jsonify(objectives)
 
+@app.route("/degrees/<int:degree_id>/sections", methods=['GET'])
+def degree_sections(degree_id: int):
+    sections = repository.get_sections_for_degree(degree_id)
+    return jsonify(sections)
+
 
 # COURSE ENDPOINTS
 @app.route("/courses/<coursename>")
