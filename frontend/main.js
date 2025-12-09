@@ -12,6 +12,7 @@ const logEl = document.getElementById("log");
 const evaluationPreviewEl = document.getElementById("evaluation-preview");
 const queryResultsEl = document.getElementById("query-results");
 const queryDegreeSelect = document.getElementById("query-degree-select");
+const queryCourseSelect = document.getElementById("course-query-select");
 const objectiveListEl = document.getElementById("objective-list");
 const degreeCourseListEl = document.getElementById("degree-course-list");
 const sectionInstructorSelect = document.getElementById("section-instructor-select");
@@ -194,6 +195,7 @@ function bindForms() {
     event.preventDefault();
     runQuery(event.target);
   });
+  document.getElementById("course-sections-query")?.addEventListener("submit", handleCourseSectionsQuery);
   document.getElementById("evaluation-query-form").addEventListener("submit", (event) => {
     event.preventDefault();
     runQuery(event.target);
@@ -249,6 +251,7 @@ async function fetchCourses() {
   state.courses = courses;
   renderSectionCourseOptions(courses);
   populateAssocCourses();
+  populateQueryCourses();
 }
 
 async function fetchInstructors() {
@@ -912,6 +915,52 @@ function populateQueryDegrees() {
     option.textContent = `${deg.degree_id ?? deg.id}: ${deg.name || "Degree"} (${deg.level || ""})`.trim();
     queryDegreeSelect.appendChild(option);
   });
+}
+
+function populateQueryCourses() {
+  if (!queryCourseSelect) return;
+  queryCourseSelect.innerHTML = "";
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "Select a course";
+  placeholder.disabled = true;
+  placeholder.selected = true;
+  queryCourseSelect.appendChild(placeholder);
+
+  state.courses.forEach((course) => {
+    const option = document.createElement("option");
+    option.value = course.course_id ?? course.id;
+    option.textContent = `${course.course_number || ""} — ${course.name || "Course"}`.trim();
+    queryCourseSelect.appendChild(option);
+  });
+}
+
+async function handleCourseSectionsQuery(event) {
+  event.preventDefault();
+  const form = event.target;
+  const courseId = queryCourseSelect?.value;
+  if (!courseId) {
+    setApiStatus("Select a course to list sections.", true);
+    return;
+  }
+
+  const params = new URLSearchParams();
+  const startYear = form.elements.start_year.value;
+  const endYear = form.elements.end_year.value;
+  if (startYear) params.append("start_year", startYear);
+  if (endYear) params.append("end_year", endYear);
+
+  const path = params.toString()
+    ? `/courses/${courseId}/sections?${params.toString()}`
+    : `/courses/${courseId}/sections`;
+
+  const res = await apiRequest(path, { method: "GET" });
+  const sections = res.ok && Array.isArray(res.data) ? res.data : [];
+  renderSectionsList(sections, `Sections for course ${courseId}`, queryResultsEl);
+  setApiStatus(
+    sections.length ? `Found ${sections.length} section(s) for course ${courseId}.` : "No sections found for that course.",
+    !sections.length
+  );
 }
 
 async function linkCourseObjectiveSubmit(event) {
