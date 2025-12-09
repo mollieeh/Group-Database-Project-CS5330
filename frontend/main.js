@@ -10,18 +10,30 @@ const evaluationPreviewEl = document.getElementById("evaluation-preview");
 const queryResultsEl = document.getElementById("query-results");
 const objectiveListEl = document.getElementById("objective-list");
 const degreeCourseListEl = document.getElementById("degree-course-list");
+const sectionInstructorSelect = document.getElementById("section-instructor-select");
+const sectionCourseSelect = document.getElementById("section-course-select");
 
 const state = {
   apiBase: apiInput.value.trim(),
   degrees: [],
   objectives: [],
   degreeCourses: [],
+  instructors: [],
+  courses: [],
   recentEvaluations: [],
   sample: {
     degrees: [
       { degree_id: 1, name: "Computer Science", level: "BS" },
       { degree_id: 2, name: "Data Science", level: "MS" },
       { degree_id: 3, name: "Cybersecurity", level: "Cert" }
+    ],
+    courses: [
+      { course_id: 101, course_number: "CSCI101", name: "Intro to CS" },
+      { course_id: 201, course_number: "CSCI201", name: "Data Structures" }
+    ],
+    instructors: [
+      { instructor_id: "90012345", name: "Ada Lovelace" },
+      { instructor_id: "90054321", name: "Alan Turing" }
     ],
     objectives: [
       { objective_id: 1, code: "LO1", title: "Programming Fundamentals" },
@@ -57,6 +69,8 @@ function init() {
 
   bindForms();
   fetchDegrees();
+  fetchCourses();
+  fetchInstructors();
   fetchObjectives();
   renderEvaluationPreview();
 }
@@ -94,6 +108,7 @@ function bindForms() {
         }
         if (endpoint === "/courses") {
           setCourseMessage(`Saved course "${payload.name}" (${payload.course_number})`, "success");
+          fetchCourses();
         }
         if (endpoint === "/instructors") {
           setInstructorMessage(`Saved instructor "${payload.name}" (${payload.instructor_id})`, "success");
@@ -170,6 +185,40 @@ async function fetchDegrees() {
   state.degrees = degrees;
   renderDegrees(degrees);
   setApiStatus(`Loaded ${degrees.length} item(s)`, false);
+}
+
+async function fetchCourses() {
+  const response = await apiRequest("/courses");
+  let courses = [];
+
+  if (response.ok && Array.isArray(response.data)) {
+    courses = response.data;
+  } else if (response.ok && Array.isArray(response.data?.courses)) {
+    courses = response.data.courses;
+  } else {
+    courses = state.sample.courses;
+    log("Using sample courses. Start the API to see live data.");
+  }
+
+  state.courses = courses;
+  renderSectionCourseOptions(courses);
+}
+
+async function fetchInstructors() {
+  const response = await apiRequest("/instructors");
+  let instructors = [];
+
+  if (response.ok && Array.isArray(response.data)) {
+    instructors = response.data;
+  } else if (response.ok && Array.isArray(response.data?.instructors)) {
+    instructors = response.data.instructors;
+  } else {
+    instructors = state.sample.instructors;
+    log("Using sample instructors. Start the API to see live data.");
+  }
+
+  state.instructors = instructors;
+  renderSectionInstructorOptions(instructors);
 }
 
 function normalizeDegree(degree) {
@@ -468,6 +517,44 @@ function renderQueryResults(results) {
   });
   queryResultsEl.innerHTML = "";
   queryResultsEl.appendChild(fragment);
+}
+
+function renderSectionCourseOptions(courses = []) {
+  if (!sectionCourseSelect) return;
+  sectionCourseSelect.innerHTML = "";
+
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "Select a course";
+  placeholder.disabled = true;
+  placeholder.selected = true;
+  sectionCourseSelect.appendChild(placeholder);
+
+  courses.forEach((course) => {
+    const option = document.createElement("option");
+    option.value = course.course_id;
+    option.textContent = `${course.course_number || ""} — ${course.name || "Course"}`.trim();
+    sectionCourseSelect.appendChild(option);
+  });
+}
+
+function renderSectionInstructorOptions(instructors = []) {
+  if (!sectionInstructorSelect) return;
+  sectionInstructorSelect.innerHTML = "";
+
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "Select an instructor";
+  placeholder.disabled = true;
+  placeholder.selected = true;
+  sectionInstructorSelect.appendChild(placeholder);
+
+  instructors.forEach((inst) => {
+    const option = document.createElement("option");
+    option.value = inst.instructor_id;
+    option.textContent = `${inst.instructor_id || ""} — ${inst.name || "Instructor"}`.trim();
+    sectionInstructorSelect.appendChild(option);
+  });
 }
 
 function log(message) {

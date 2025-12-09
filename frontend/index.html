@@ -180,8 +180,10 @@
           </div>
         </div>
         <form id="section-form" class="stack" data-endpoint="/sections" data-method="POST">
-          <label class="label">Course ID
-            <input name="course_id" type="number" min="1" required placeholder="101">
+          <label class="label">Course
+            <select id="section-course-select" name="course_id" required>
+              <option value="">Loading courses…</option>
+            </select>
           </label>
           <div class="inline">
             <label class="label">Year
@@ -199,7 +201,9 @@
             </label>
           </div>
           <label class="label">Instructor ID
-            <input name="instructor_id" type="number" min="1" required placeholder="90012345">
+            <select id="section-instructor-select" name="instructor_id" required>
+              <option value="">Loading instructors…</option>
+            </select>
           </label>
           <label class="label">Enrollment count
             <input name="enrollment_count" type="number" min="0" required placeholder="30">
