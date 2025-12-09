@@ -245,11 +245,11 @@ def course_sections(course_id: int):
         # list all sections taught by an instructor for range of semesters
 @app.route("/instructors/<instructor_id>/sections", methods=['GET'])
 def instructor_sections(instructor_id: str):
-    start_year = request.args.get('start_year', type=int)
-    end_year = request.args.get('end_year', type=int)
+    year = request.args.get('year', type=int)
+    term = request.args.get('term')
 
     sections = repository.get_section_by_instructor(
-        instructor_id, start_year, end_year
+        instructor_id, year, term
     )
     return jsonify(sections)
 
@@ -327,18 +327,18 @@ def course_objectives():
     return jsonify({"degree_course": dc_link, "course_objective": co_link}), 201
 
 
-# INSTRUCTOR SECTIONS QUERY ENDPOINT
-@app.get("/instructors/<instructor_id>/sections")
-def api_get_sections_by_instructor(instructor_id):
-    # Optional query parameters for semester range
-    start_year = request.args.get("start_year", type=int)
-    end_year = request.args.get("end_year", type=int)
+# # INSTRUCTOR SECTIONS QUERY ENDPOINT
+# @app.get("/instructors/<instructor_id>/sections")
+# def api_get_sections_by_instructor(instructor_id):
+#     # Optional query parameters for semester range
+#     start_year = request.args.get("start_year", type=int)
+#     end_year = request.args.get("end_year", type=int)
 
-    try:
-        rows = repository.get_section_by_instructor(instructor_id, start_year, end_year)
-        return jsonify(rows)
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+#     try:
+#         rows = repository.get_section_by_instructor(instructor_id, start_year, end_year)
+#         return jsonify(rows)
+#     except Exception as e:
+#         return jsonify({"error": str(e)}), 500
     
 # COURSE SECTIONS QUERY ENDPOINT
 @app.get("/courses/<int:course_id>/sections")

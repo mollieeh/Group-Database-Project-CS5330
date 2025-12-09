@@ -145,17 +145,27 @@ def get_section_by_id(section_id: int):
     cur.close()
     return row
 
-def get_section_by_instructor(instructor_id: str, start_year: int = None, end_year: int = None):
-    #get sections taught by instructor give beased on range of semsters
+def get_section_by_instructor(instructor_id: str, year: int = None, term: str = None):
+    # get sections taught by instructor based on year and optional term
     cur = cnx.cursor(dictionary=True)
-    cur.execute("""
-            SELECT i.name AS instructor_name, c.course_number, c.name AS course_name, s.year, s.term AS semester, s.section_number 
+    conditions = ["i.instructor_id = %s"]
+    params = [instructor_id]
+    if year is not None:
+        conditions.append("s.year = %s")
+        params.append(year)
+    if term:
+        conditions.append("s.term = %s")
+        params.append(term)
+
+    where_clause = " AND ".join(conditions)
+    query = f"""
+            SELECT i.name AS instructor_name, c.course_id, c.course_number, c.name AS course_name, s.year, s.term AS semester, s.section_number 
                 FROM INSTRUCTOR i
                 JOIN SECTION s on i.instructor_id = s.instructor_id
                 JOIN COURSE c on s.course_id = c.course_id
-                WHERE i.instructor_id = %s
-	                AND (s.year BETWEEN %s AND %s)
-                ORDER BY s.year DESC, FIELD(s.term, 'Spring', 'Summer', 'Fall') DESC, c.course_number, s.section_number;""", (instructor_id, start_year, end_year))
+                WHERE {where_clause}
+                ORDER BY s.year DESC, FIELD(s.term, 'Spring', 'Summer', 'Fall') DESC, c.course_number, s.section_number;"""
+    cur.execute(query, tuple(params))
     rows = cur.fetchall()
     cur.close()
     return rows

@@ -21,6 +21,10 @@ const assocCourseSelect = document.getElementById("assoc-course-select");
 const assocObjectiveSelect = document.getElementById("assoc-objective-select");
 const assocDegreeCoreCheckbox = document.getElementById("assoc-degree-core");
 const evalDegreeSelect = document.getElementById("evaluation-degree-select");
+const evalInstructorSelect = document.getElementById("evaluation-instructor-select");
+const evalYearSelect = document.getElementById("evaluation-year-select");
+const listInstructorSectionsBtn = document.getElementById("list-instructor-sections");
+const instructorSectionsResultEl = document.getElementById("instructor-sections-result");
 
 const state = {
   apiBase: apiInput.value.trim(),
@@ -62,6 +66,7 @@ document.getElementById("refresh-degrees").addEventListener("click", fetchDegree
 document.getElementById("reload-degrees").addEventListener("click", fetchDegrees);
 document.getElementById("reload-objectives").addEventListener("click", fetchObjectives);
 document.getElementById("duplicate-eval").addEventListener("click", duplicateEvaluation);
+document.getElementById("list-instructor-sections")?.addEventListener("click", listInstructorSections);
 
 function init() {
   const storedBase = localStorage.getItem("apiBase");
@@ -81,6 +86,7 @@ function init() {
   fetchCourses();
   fetchInstructors();
   fetchObjectives();
+  populateEvalYears();
   populateAssocDropdowns();
   renderEvaluationPreview();
 
@@ -252,6 +258,38 @@ async function fetchInstructors() {
 
   state.instructors = instructors;
   renderSectionInstructorOptions(instructors);
+  populateEvalInstructors(instructors);
+}
+
+async function populateEvalYears() {
+  if (!evalYearSelect) return;
+  const response = await apiRequest("/sections");
+  let years = [];
+  if (response.ok && Array.isArray(response.data)) {
+    years = Array.from(
+      new Set(
+        response.data
+          .map((s) => Number(s.year))
+          .filter((y) => Number.isInteger(y))
+      )
+    ).sort((a, b) => b - a);
+  }
+  if (!years.length) {
+    years = [new Date().getFullYear()];
+  }
+  evalYearSelect.innerHTML = "";
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "Select year";
+  placeholder.disabled = true;
+  placeholder.selected = true;
+  evalYearSelect.appendChild(placeholder);
+  years.forEach((y) => {
+    const option = document.createElement("option");
+    option.value = y;
+    option.textContent = y;
+    evalYearSelect.appendChild(option);
+  });
 }
 
 function normalizeDegree(degree) {
@@ -706,6 +744,51 @@ function renderSectionInstructorOptions(instructors = []) {
   });
 }
 
+function populateEvalInstructors(instructors = []) {
+  if (!evalInstructorSelect) return;
+  evalInstructorSelect.innerHTML = "";
+
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "Select an instructor";
+  placeholder.disabled = true;
+  placeholder.selected = true;
+  evalInstructorSelect.appendChild(placeholder);
+
+  instructors.forEach((inst) => {
+    const option = document.createElement("option");
+    option.value = inst.instructor_id;
+    option.textContent = `${inst.instructor_id || ""} — ${inst.name || "Instructor"}`.trim();
+    evalInstructorSelect.appendChild(option);
+  });
+}
+
+async function listInstructorSections() {
+  const instructorId = evalInstructorSelect?.value;
+  const term = document.querySelector('#evaluation-form select[name="term"]')?.value;
+  const year = evalYearSelect?.value;
+
+  if (!instructorId || !term || !year) {
+    setApiStatus("Select instructor and semester to list sections.", true);
+    return;
+  }
+
+  const sectionRes = await apiRequest(
+    `/instructors/${instructorId}/sections?year=${year}&term=${encodeURIComponent(term)}`,
+    { method: "GET" }
+  );
+
+  const sections = sectionRes.ok && Array.isArray(sectionRes.data) ? sectionRes.data : [];
+
+  renderSectionsList(sections, `Sections for ${instructorId} in ${term} ${year}`, instructorSectionsResultEl);
+  if (sections.length) {
+    setApiStatus("Loaded sections.", false);
+  } else {
+    setApiStatus("No sections match for that instructor/semester/degree.", true);
+  }
+  log(`Listed sections for instructor ${instructorId}`);
+}
+
 function populateAssocDropdowns() {
   populateAssocDegrees();
   populateAssocObjectiveDegrees();
@@ -834,4 +917,38 @@ function log(message) {
   const entry = document.createElement("div");
   entry.textContent = `[${time}] ${message}`;
   logEl.prepend(entry);
+}
+function renderSectionsList(sections = [], title = "", targetEl = queryResultsEl) {
+  if (!targetEl) return;
+  if (!sections.length) {
+    const prefix = title ? `${title}: ` : "";
+    targetEl.innerHTML = `<div class="empty">${prefix}No sections found.</div>`;
+    return;
+  }
+
+  const fragment = document.createDocumentFragment();
+  if (title) {
+    const heading = document.createElement("div");
+    heading.className = "subhead";
+    heading.textContent = title;
+    fragment.appendChild(heading);
+  }
+
+  sections.forEach((s, idx) => {
+    const card = document.createElement("div");
+    card.className = "card";
+    const titleEl = document.createElement("div");
+    titleEl.className = "card__title";
+    titleEl.textContent = `Section ${s.section_number || ""} — ${s.semester || s.term || ""} ${s.year || ""}`;
+    card.appendChild(titleEl);
+
+    const meta = document.createElement("div");
+    meta.className = "card__meta";
+    meta.textContent = `Course: ${s.course_id ?? ""} • Instructor: ${s.instructor_name || s.instructor_id || ""}`;
+    card.appendChild(meta);
+    fragment.appendChild(card);
+  });
+
+  targetEl.innerHTML = "";
+  targetEl.appendChild(fragment);
 }

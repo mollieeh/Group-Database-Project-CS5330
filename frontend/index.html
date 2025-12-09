@@ -253,21 +253,34 @@
           <h2>Capture semester results</h2>
           <p class="subhead">Select the context first, then log one objective at a time. Use the duplicate button to reuse entries across degrees if needed.</p>
         </div>
-      </div>
-      <form id="evaluation-form" class="stack" data-endpoint="/evaluations" data-method="POST">
-        <div class="inline">
+        </div>
+        <form id="evaluation-form" class="stack" data-endpoint="/evaluations" data-method="POST">
+          <div class="inline">
           <label class="label">Degree
             <select id="evaluation-degree-select" name="degree_id" required>
               <option value="">Select a degree</option>
             </select>
           </label>
-          <label class="label">Section ID
-            <input name="section_id" type="number" min="1" required placeholder="5001">
+          <label class="label">Semester
+            <div class="inline">
+              <select id="evaluation-year-select" name="year" required>
+                <option value="">Select year</option>
+              </select>
+              <select name="term" required>
+                <option>Spring</option>
+                <option>Summer</option>
+                <option>Fall</option>
+              </select>
+            </div>
           </label>
-          <label class="label">Objective ID
-            <input name="objective_id" type="number" min="1" required placeholder="301">
-          </label>
-        </div>
+            <label class="label">Instructor
+              <select id="evaluation-instructor-select" name="instructor_id" required>
+                <option value="">Select an instructor</option>
+              </select>
+            </label>
+          </div>
+          <button type="button" id="list-instructor-sections" class="ghost">List sections for this instructor/semester</button>
+          <div id="instructor-sections-result" class="card-list tight"></div>
         <div class="inline">
           <label class="label">Evaluation method
             <input name="eval_method" type="text" required placeholder="Project, Quiz, Oral Presentation">
