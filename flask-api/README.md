@@ -29,6 +29,12 @@ cd flask-api/src
 
 #### Simply Running the App
 ```bash
+cd flask-api
+cd src
+python application.py
+```
+
+```bash
 flask --app application run
 ```
 #### Watch Mode
