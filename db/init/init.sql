@@ -106,7 +106,7 @@ CREATE TABLE EVALUATION (
     section_id   INT NOT NULL,
     degree_id    INT NOT NULL,
     objective_id INT NOT NULL,
-    course_id     INT NOT NULL,   -- NEW
+    --course_id     INT NOT NULL,  
     eval_method  VARCHAR(50) NOT NULL,
     count_A      INT UNSIGNED NOT NULL DEFAULT 0,
     count_B      INT UNSIGNED NOT NULL DEFAULT 0,
@@ -123,8 +123,8 @@ CREATE TABLE EVALUATION (
     CONSTRAINT fk_eval_objective
         FOREIGN KEY (degree_id, objective_id) REFERENCES DEGREE_OBJECTIVE(degree_id, objective_id)
         ON DELETE CASCADE ON UPDATE CASCADE,
-    CONSTRAINT fk_eval_course
-        FOREIGN KEY (course_id)
-        REFERENCES COURSE(course_id)
-        ON DELETE RESTRICT ON UPDATE CASCADE
+   -- CONSTRAINT fk_eval_course
+   --    FOREIGN KEY (course_id)
+   --     REFERENCES COURSE(course_id)
+   --     ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
