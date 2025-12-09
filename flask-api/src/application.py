@@ -407,8 +407,8 @@ def api_get_sections_by_semester(term, year):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-if __name__ == "__main__":
-    app.run(threaded=False, processes=1, debug=True)
+# if __name__ == "__main__":
+#     app.run(threaded=False, processes=1, debug=True)
 
 # SECTION SUCCESS RATE QUERY
 @app.get("/sections/<term>/<int:year>/success")
@@ -425,3 +425,4 @@ def api_get_sections_success_rate(term, year):
 
 if __name__ == "__main__":
     app.run(threaded=False, processes=1, debug=True)
+
