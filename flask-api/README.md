@@ -1,4 +1,5 @@
 # How to work on Flask Backend
+- Note: Databases credentials are read from config.ini
 ```bash
 cd flask-api # go to the flask directory
 ```

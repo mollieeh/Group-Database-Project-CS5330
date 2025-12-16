@@ -5,9 +5,9 @@
 2. Follow instructions in flask-api/README.md
 - https://github.com/mollieeh/Group-Database-Project-CS5330/blob/main/flask-api/README.md
 3. go to frontend
-
 ```bash
 cd frontend
 npm install # make sure you have dependencies
-npm run # this will open the application
+npm run dev # this will open the application
 ```
+4. Navigate to http://127.0.0.1:3000 in the browser
