@@ -33,12 +33,3 @@ cd flask-api
 cd src
 python application.py
 ```
-
-```bash
-flask --app application run
-```
-#### Watch Mode
-This will update website (after refreshing the page) with changes to code
-```bash
-flask --app application --debug run 
-```
